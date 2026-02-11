@@ -1,0 +1,15 @@
+[project]
+name = "mercury-virtual-solar-wind"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "astropy>=7.2.0",
+    "hermpy",
+    "numpy>=2.4.1",
+    "sunpy>=7.1.0",
+]
+
+[tool.uv.sources]
+hermpy = { git = "https://github.com/daraghhollman/hermpy-1.0.0.git" }
