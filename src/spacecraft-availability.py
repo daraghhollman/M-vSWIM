@@ -4,6 +4,7 @@ work.
 """
 
 import datetime as dt
+from pathlib import Path
 from typing import Any, Dict
 
 import astropy.units as u
@@ -12,9 +13,11 @@ import numpy as np
 import spiceypy as spice
 from astropy.units import Quantity
 from hermpy.net import ClientSPICE
+from matplotlib.dates import MonthLocator
 
 # Define the critera with which we look within
 HELIOCENTRIC_DISTANCE_BOUNDS = (0.3 * u.au, 0.5 * u.au)
+FIGURE_DIRECTORY = Path(__file__).parent.parent / "figures/"
 
 # This hermpy spice client will by default include MESSENGER kernels for the
 # orbital phase of the mission. We must add other kernels to download.
@@ -72,10 +75,33 @@ spice_client.KERNEL_LOCATIONS.update(
                 "estrack_v04.tf",
             ],
         },
+        # "MARINER 10": {
+        #     "BASE": "https://naif.jpl.nasa.gov/pub/naif/M10/",
+        #     "DIRECTORY": "kernels/spk/",
+        #     "PATTERNS": ["M10_archive_1.bsp"],
+        # },
+        # "Helios 1/2": {
+        #     "BASE": "https://naif.jpl.nasa.gov/pub/naif/HELIOS/",
+        #     "DIRECTORY": "kernels/spk/",
+        #     "PATTERNS": ["???????_???????_?????_?????.bsp"],
+        # },
+        "PSP": {
+            "BASE": "https://spdf.gsfc.nasa.gov/pub/data/psp/",
+            "DIRECTORY": "ephemeris/spice/ephemerides/",
+            "PATTERNS": ["spp_nom_20180812_20300101_v043_PostV7.bsp"],
+        },
     }
 )
 
 spacecraft_info: Dict[str, Dict[str, Any]] = {
+    # "Helios 2": {
+    #     "ID": "Helios 2",
+    #     "Time Range": (dt.datetime(1976, 1, 16), dt.datetime(1979, 12, 22)),
+    # },
+    # "Helios 1": {
+    #     "ID": "Helios 1",
+    #     "Time Range": (dt.datetime(1974, 12, 11), dt.datetime(1981, 2, 17)),
+    # },
     "BepiColombo": {
         "ID": "BEPICOLOMBO MPO",
         "Time Range": (dt.datetime(2018, 10, 30), dt.datetime.today()),
@@ -83,6 +109,10 @@ spacecraft_info: Dict[str, Dict[str, Any]] = {
     "Solar Orbiter": {
         "ID": "Solar Orbiter",
         "Time Range": (dt.datetime(2020, 2, 11), dt.datetime.today()),
+    },
+    "Parker Solar Probe": {
+        "ID": "Parker Solar Probe",
+        "Time Range": (dt.datetime(2018, 8, 13), dt.datetime.today()),
     },
 }
 
@@ -109,9 +139,8 @@ with spice_client.KernelPool():
 
 # Contruct our plot
 
-_, ax = plt.subplots()
+_, ax = plt.subplots(figsize=(6, 2))
 
-colours = ["indianred", "cornflowerblue"]
 for i, (_, info) in enumerate(spacecraft_info.items()):
 
     is_within_heliocentric_distance_bounds = (
@@ -120,17 +149,21 @@ for i, (_, info) in enumerate(spacecraft_info.items()):
 
     values = np.where(is_within_heliocentric_distance_bounds, i, np.nan)
 
-    ax.plot(info["Time"], values, color=colours[i], lw=20, solid_capstyle="butt")
+    ax.plot(info["Time"], values, lw=10, solid_capstyle="butt")
 
 
 # Replace ticks with spacecraft labels
 ax.set_yticks(range(len(spacecraft_info)), spacecraft_info.keys())
 
 ax.set_title(
-    f"Times where: {HELIOCENTRIC_DISTANCE_BOUNDS[0]} < "
+    f"{HELIOCENTRIC_DISTANCE_BOUNDS[0]} < "
     r"$R_{\rm H}$" + f" ≤ {HELIOCENTRIC_DISTANCE_BOUNDS[1]}"
 )
 
-ax.margins(y=3)
+ax.margins(x=0, y=0)
+ax.set_ylim(-0.5, 3 - 0.5)
+ax.tick_params(axis="x", rotation=-90)
+ax.xaxis.set_minor_locator(MonthLocator())
 
-plt.show()
+plt.tight_layout()
+plt.savefig(FIGURE_DIRECTORY / "spacecraft-availability.pdf", format="pdf")
