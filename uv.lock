@@ -136,11 +136,11 @@ wheels = [
 
 [[package]]
 name = "astropy-iers-data"
-version = "0.2026.2.9.0.50.33"
+version = "0.2026.2.16.0.48.25"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ab/57/11e22fc9a6d57e9f422eeb6eaf7d799cf6ccf87085fc4ffee309b267b0ea/astropy_iers_data-0.2026.2.9.0.50.33.tar.gz", hash = "sha256:26aa979a2d309cd68367d4e9c0711dc0cd546bd29c797f473d9b4517cd74509a", size = 1922020, upload-time = "2026-02-09T00:51:13.093Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/dc/ce/9aed8765e4dcb2e12afd545c7ce63f2b9bcad592afcb9a0d5437d872060d/astropy_iers_data-0.2026.2.16.0.48.25.tar.gz", hash = "sha256:be14512844e71536a15e165d729385f3cb4865d7822172509e68c4ac79322067", size = 1926145, upload-time = "2026-02-16T00:49:11.138Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4e/67/6af8b422c04dec79c908cf60fdcd4725c3c112b2a058087c4ff58284a142/astropy_iers_data-0.2026.2.9.0.50.33-py3-none-any.whl", hash = "sha256:ac01dede0240499b23c2b89fdc93093500336197c5c794e6a01173cfd78a7620", size = 1978518, upload-time = "2026-02-09T00:51:11.903Z" },
+    { url = "https://files.pythonhosted.org/packages/49/94/dcdac330d2c26776956555610ef584147584acc6b060e451aa65dd9142d9/astropy_iers_data-0.2026.2.16.0.48.25-py3-none-any.whl", hash = "sha256:180d1c3f59d18aa616345560799c2d88ec6e5164b8c45c746380acf892946136", size = 1982562, upload-time = "2026-02-16T00:49:09.602Z" },
 ]
 
 [[package]]
@@ -175,6 +175,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c9/aa/4acaf814ff901145da37332e05bb510452ebed97bc9602695059dd46ef39/bs4-0.0.2.tar.gz", hash = "sha256:a48685c58f50fe127722417bae83fe6badf500d54b55f7e39ffe43b798653925", size = 698, upload-time = "2024-01-17T18:15:47.371Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/51/bb/bf7aab772a159614954d84aa832c129624ba6c32faa559dfb200a534e50b/bs4-0.0.2-py2.py3-none-any.whl", hash = "sha256:abf8742c0805ef7f662dce4b51cca104cffe52b835238afc169142ab9b3fbccc", size = 1189, upload-time = "2024-01-17T18:15:48.613Z" },
+]
+
+[[package]]
+name = "cdflib"
+version = "1.3.8"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6e/e5/596a248e9d399db32be39c3f5299f0dbd6cab4464a4b2f18c0aab37a14b1/cdflib-1.3.8.tar.gz", hash = "sha256:9674f5c1615fb836b1a2193ee751f42a5d227c05686ee60ab8bdc97d39f3e52f", size = 240366, upload-time = "2026-01-09T19:10:13.224Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a5/a1/06dca623be76280d0b5dbf5e0911abd3271d07476ed256a0d268bbbdcc0a/cdflib-1.3.8-py3-none-any.whl", hash = "sha256:38abd71fb6a14794ba2ff22c12cc0b77e09d06686f94c8157f814f7c1c20761a", size = 79651, upload-time = "2026-01-09T19:10:11.374Z" },
 ]
 
 [[package]]
@@ -445,7 +457,7 @@ wheels = [
 [[package]]
 name = "hermpy"
 version = "0.1.0"
-source = { git = "https://github.com/daraghhollman/hermpy-1.0.0.git#c5be5cf18b57d38d6f3b124cf343600b2293acce" }
+source = { git = "https://github.com/daraghhollman/hermpy-1.0.0.git#7dbac78259bc942be7f9ce00d8f3d004edae8cb6" }
 dependencies = [
     { name = "bs4" },
     { name = "drms" },
@@ -653,19 +665,23 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "astropy" },
+    { name = "cdflib" },
     { name = "hermpy" },
     { name = "numpy" },
     { name = "polars" },
     { name = "sunpy" },
+    { name = "sunpy-soar" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "astropy", specifier = ">=7.2.0" },
+    { name = "cdflib", specifier = ">=1.3.8" },
     { name = "hermpy", git = "https://github.com/daraghhollman/hermpy-1.0.0.git" },
     { name = "numpy", specifier = ">=2.4.1" },
     { name = "polars", specifier = ">=1.38.1" },
     { name = "sunpy", specifier = ">=7.1.0" },
+    { name = "sunpy-soar", specifier = ">=1.12.0" },
 ]
 
 [[package]]
@@ -943,11 +959,11 @@ wheels = [
 
 [[package]]
 name = "platformdirs"
-version = "4.7.0"
+version = "4.9.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/71/25/ccd8e88fcd16a4eb6343a8b4b9635e6f3928a7ebcd82822a14d20e3ca29f/platformdirs-4.7.0.tar.gz", hash = "sha256:fd1a5f8599c85d49b9ac7d6e450bc2f1aaf4a23f1fe86d09952fe20ad365cf36", size = 23118, upload-time = "2026-02-12T22:21:53.764Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1b/04/fea538adf7dbbd6d186f551d595961e564a3b6715bdf276b477460858672/platformdirs-4.9.2.tar.gz", hash = "sha256:9a33809944b9db043ad67ca0db94b14bf452cc6aeaac46a88ea55b26e2e9d291", size = 28394, upload-time = "2026-02-16T03:56:10.574Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cb/e3/1eddccb2c39ecfbe09b3add42a04abcc3fa5b468aa4224998ffb8a7e9c8f/platformdirs-4.7.0-py3-none-any.whl", hash = "sha256:1ed8db354e344c5bb6039cd727f096af975194b508e37177719d562b2b540ee6", size = 18983, upload-time = "2026-02-12T22:21:52.237Z" },
+    { url = "https://files.pythonhosted.org/packages/48/31/05e764397056194206169869b50cf2fee4dbbbc71b344705b9c0d878d4d8/platformdirs-4.9.2-py3-none-any.whl", hash = "sha256:9170634f126f8efdae22fb58ae8a0eaa86f38365bc57897a6c4f781d1f5875bd", size = 21168, upload-time = "2026-02-16T03:56:08.891Z" },
 ]
 
 [[package]]
@@ -1190,23 +1206,23 @@ wheels = [
 
 [[package]]
 name = "spiceypy"
-version = "8.0.1"
+version = "8.0.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e2/bf/43d96db430ce57e47099adb24fc63d0247908ad5c37174723ea5d9202e5b/spiceypy-8.0.1.tar.gz", hash = "sha256:17cb369c613818dae1071e5f8eb6b8b2291330c5a74c7e2954ac86700de682fe", size = 622292, upload-time = "2026-01-08T03:20:16.027Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c5/a6/358789d121c17af0f11632e19ed31e15679dcc8ac8f28e92857b9d1705bb/spiceypy-8.0.2.tar.gz", hash = "sha256:4e3a72aa3ddfd1d1bfe0c99ab7c2b798e989d0a0aedc86323e304224de6ef70e", size = 622513, upload-time = "2026-02-17T02:00:56.673Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/af/4a/dd064c765f91da83ba15ea41c11fc2ba61099cde419999b7e7cef8a1ed28/spiceypy-8.0.1-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:9a57f5a87bc95177e4fe25be84701ce37834605f27a7959064762b37e77506f3", size = 2077104, upload-time = "2026-01-08T03:20:00.716Z" },
-    { url = "https://files.pythonhosted.org/packages/56/7e/80b82438abb2d61079ef7537f3bc4d6d488eea71b95af87a766309f21962/spiceypy-8.0.1-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:c744deeadded50f5631fbb74c62835388cd29ef58a052c67f9121750f48d2f9a", size = 1878877, upload-time = "2026-01-08T03:20:02.654Z" },
-    { url = "https://files.pythonhosted.org/packages/ae/31/9799105e1f32ff46cc61a31b8e1fbbc59787fd3093f170550ed6b133d422/spiceypy-8.0.1-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:97c94afef92933371f46a4a1bee3cc2b6dad7f1718cd8df99b7cdc61f572386b", size = 2205030, upload-time = "2026-01-08T03:20:04.261Z" },
-    { url = "https://files.pythonhosted.org/packages/91/c7/32c72b27ab6bbac2cfeb572f754c4691c74d78974ea2f5d53526d793f16a/spiceypy-8.0.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:446c546236ee1858447a0e5af0a02c613166e1970d60ecc940f88c3ad08f05c9", size = 2320253, upload-time = "2026-01-08T03:20:06.045Z" },
-    { url = "https://files.pythonhosted.org/packages/7b/f7/dd72565b5f85efa55f77f811d82d839d57030e12d66520a1581aef411fff/spiceypy-8.0.1-cp313-cp313-win_amd64.whl", hash = "sha256:904ffafc1d35fc16b099900334bfbadba845f3e244da070194d73282122265e6", size = 2017536, upload-time = "2026-01-08T03:20:07.333Z" },
-    { url = "https://files.pythonhosted.org/packages/cc/42/5e0c26494a05ba1811a58b3d9382f5d844ac503745fb3ffeb525274f6b00/spiceypy-8.0.1-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:2a22f95a929ac9f4dc1a68933abf5a4966f551120132f318217305c013c611bb", size = 2074350, upload-time = "2026-01-08T03:20:08.733Z" },
-    { url = "https://files.pythonhosted.org/packages/a5/8f/9441cffd5efad37fc2c2fcbec59a3c3635c1ff9cfd7243750641b367097e/spiceypy-8.0.1-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:b5f5e8233f24e727132f0e4e42aa6aba60fe3590e0ad7bac82ea540d32c52500", size = 1879491, upload-time = "2026-01-08T03:20:10.663Z" },
-    { url = "https://files.pythonhosted.org/packages/88/85/db6248542c8b38981c98f4f1f5b2b9940f2281c263fbcd1290aee4cba8b8/spiceypy-8.0.1-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:c6e6169c658ae4d6821b2bf096fefd8afe0b0c1ebd4c381b888539b1e7d5d745", size = 2212100, upload-time = "2026-01-08T03:20:12.103Z" },
-    { url = "https://files.pythonhosted.org/packages/73/22/74233e7641aed6ab71d27f9e0fc64fd27bc94e2e6cb4f304eac81cf092e1/spiceypy-8.0.1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:85840b43b4dcbeb6d77c354b61ae41e6507b198205483c3a61f55b74c03eceda", size = 2324218, upload-time = "2026-01-08T03:20:13.471Z" },
-    { url = "https://files.pythonhosted.org/packages/c1/c5/b7314263595e1a80ed599cde6d0ec881338d54d84edc56907ef4332f48cf/spiceypy-8.0.1-cp314-cp314-win_amd64.whl", hash = "sha256:fa6f232615c4120fb73cc9dd6820b5b72f898f4d2eb042d4ea51740674f81fb7", size = 2077452, upload-time = "2026-01-08T03:20:14.707Z" },
+    { url = "https://files.pythonhosted.org/packages/33/13/378b2f678f285e9e37ca515fc223dd6964487282075030e5dd7165210d98/spiceypy-8.0.2-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:b0be69273b4260093eebc6c3c067ab5f3505eb0e70fa8af1f80d046a85ba8cbe", size = 2077364, upload-time = "2026-02-17T02:00:38.928Z" },
+    { url = "https://files.pythonhosted.org/packages/ed/f8/ca8e25bb4a9f753afa064d6fce70d5652bfc33d5da210eabbe0ed82b4489/spiceypy-8.0.2-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:84612f667afd6edb6d38bb058ba7ad7f39b6392eb5d51107dbfbb23e6b9feb9b", size = 1879112, upload-time = "2026-02-17T02:00:40.465Z" },
+    { url = "https://files.pythonhosted.org/packages/20/07/6847d8e1f901ac66faf70674e1b1c914b0d54f3c1f4e4e36370865429bf3/spiceypy-8.0.2-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:4cf8851cba361dd3b275c77b686f64b64121f098f86e6824d60cd26db57a6724", size = 2205079, upload-time = "2026-02-17T02:00:41.867Z" },
+    { url = "https://files.pythonhosted.org/packages/36/17/6b20d2dbcafc9c1b3611f97f736e2bfaade39b2162ab2914a0a083af8824/spiceypy-8.0.2-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:5cadfc6f9afb5f90fbd725fa642a596e1e0283e354a5625d8203b3d85721c1a0", size = 2320509, upload-time = "2026-02-17T02:00:43.371Z" },
+    { url = "https://files.pythonhosted.org/packages/9f/83/a3ecf147563f0e94e5ee3ff4f70db2406dc6580bfcd9d7f43baf7cb6c355/spiceypy-8.0.2-cp313-cp313-win_amd64.whl", hash = "sha256:ca7be59cbd33cd6c08b8b180b72faff34f472543ab02ac365c4ea0ef850122c3", size = 2017800, upload-time = "2026-02-17T02:00:47.387Z" },
+    { url = "https://files.pythonhosted.org/packages/31/f7/e3562691cca2a475c4cc715a3262d616d1fa4f094e6822e6f756360e4f77/spiceypy-8.0.2-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:819bfac5f83401cc1217427ad49c661a209a386cc9f09cc4294e0c61cf298168", size = 2074660, upload-time = "2026-02-17T02:00:49.346Z" },
+    { url = "https://files.pythonhosted.org/packages/25/00/c6c66ccea1a8c2359c262458a9ff9f92d398c7cb864f5fc38ea1b7dfa5a1/spiceypy-8.0.2-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:a7f60ad6d1d2e3a753df906a6997a1337d3b15d5562e333b7dcb0a9078ea0887", size = 1879673, upload-time = "2026-02-17T02:00:50.667Z" },
+    { url = "https://files.pythonhosted.org/packages/24/f7/542e7d6c9457b351cfda9209b5e4a5bfa5372d2a25f577a226550b2c977b/spiceypy-8.0.2-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:51e32fd2f781005c8d18a1610679b6c040f946bee5e06d90632ea6c53a4f7ec1", size = 2212460, upload-time = "2026-02-17T02:00:52.313Z" },
+    { url = "https://files.pythonhosted.org/packages/74/40/0d664796cf8ddaf8b120968a21af5e5cea957d8df009413805647d71fa97/spiceypy-8.0.2-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:d3ec819a0ee9c5bd7b775c8878e2e80ce975ff6ea162b1422b6c6a8c97cefc43", size = 2324555, upload-time = "2026-02-17T02:00:53.919Z" },
+    { url = "https://files.pythonhosted.org/packages/0f/35/51857d6974a24749968bd3f6ee54fb0966009a7fdb660dea92be758f80ec/spiceypy-8.0.2-cp314-cp314-win_amd64.whl", hash = "sha256:5fe1ec32cee5a33368d95076a2cc68405baac81442a75db3726102d2005634d4", size = 2078161, upload-time = "2026-02-17T02:00:55.28Z" },
 ]
 
 [[package]]
@@ -1230,6 +1246,29 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/bc/16/fa7f611df7987d43c8108e23d24337a82da30df4dcd4e83dd0979eea6e0d/sunpy-7.1.0-cp312-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:02fa7835a626c39d5322ea8c51d600289823f2025ba632f5774cf4885d8a2565", size = 3735092, upload-time = "2025-12-08T15:18:42.38Z" },
     { url = "https://files.pythonhosted.org/packages/01/66/0c470086cc4b7920aeeec2cea2864d92997f0dca07b54e473dceac7eff7e/sunpy-7.1.0-cp312-abi3-win_amd64.whl", hash = "sha256:57f68ef1ec1335f94bbc6f6cf4dd215cebdf5c97c92f91476638f7c2329880f8", size = 3684100, upload-time = "2025-12-08T15:18:43.694Z" },
     { url = "https://files.pythonhosted.org/packages/f1/38/99a9195abdb60eb55c5b2ae21f085f75ceb53688764e30ae2e8694597197/sunpy-7.1.0-py3-none-any.whl", hash = "sha256:a1630f237036df625f1cde30cf93f51517496b20d3d8b7bee812024d468cdbd2", size = 3654934, upload-time = "2025-12-08T15:25:26.519Z" },
+]
+
+[package.optional-dependencies]
+net = [
+    { name = "beautifulsoup4" },
+    { name = "drms" },
+    { name = "python-dateutil" },
+    { name = "tqdm" },
+    { name = "zeep" },
+]
+
+[[package]]
+name = "sunpy-soar"
+version = "1.12.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "astropy" },
+    { name = "requests" },
+    { name = "sunpy", extra = ["net"] },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1e/6e/df01535275567695660e8794331a08d30e6dacf88344a8f12842dbd7ecc0/sunpy_soar-1.12.0.tar.gz", hash = "sha256:14e59c7cb95c38a8b0fffb994c3254a9dbb85d74bb07ecd4877ac1e139924455", size = 45150, upload-time = "2025-12-10T12:50:48.213Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/13/9c/32e6c14f7fab2cf2d13abacf7e8583e74a6114d2dbb280e2c4e8c521f9ea/sunpy_soar-1.12.0-py3-none-any.whl", hash = "sha256:85fe6f24d58846a8ba7c30cadc6bda03f3083e5689d94efa854a3bbb2f64c759", size = 20254, upload-time = "2025-12-10T12:50:47.345Z" },
 ]
 
 [[package]]
@@ -1273,16 +1312,16 @@ wheels = [
 
 [[package]]
 name = "xarray"
-version = "2026.1.0"
+version = "2026.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
     { name = "packaging" },
     { name = "pandas" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f5/85/113ff1e2cde9e8a5b13c2f0ef4e9f5cd6ca3a036b6452f4dd523419289b5/xarray-2026.1.0.tar.gz", hash = "sha256:0c9814761f9d9a9545df37292d3fda89f83201f3e02ae0f09f03313d9cfdd5e2", size = 3107024, upload-time = "2026-01-28T17:49:03.822Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0f/03/e3353b72e518574b32993989d8f696277bf878e9d508c7dd22e86c0dab5b/xarray-2026.2.0.tar.gz", hash = "sha256:978b6acb018770554f8fd964af4eb02f9bcc165d4085dbb7326190d92aa74bcf", size = 3111388, upload-time = "2026-02-13T22:20:50.18Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7d/8e/952a351c10df395d9bab850f611f4368834ae9104d6449049f5a49e00925/xarray-2026.1.0-py3-none-any.whl", hash = "sha256:5fcc03d3ed8dfb662aa254efe6cd65efc70014182bbc2126e4b90d291d970d41", size = 1403009, upload-time = "2026-01-28T17:49:01.538Z" },
+    { url = "https://files.pythonhosted.org/packages/99/92/545eb2ca17fc0e05456728d7e4378bfee48d66433ae3b7e71948e46826fb/xarray-2026.2.0-py3-none-any.whl", hash = "sha256:e927d7d716ea71dea78a13417970850a640447d8dd2ceeb65c5687f6373837c9", size = 1405358, upload-time = "2026-02-13T22:20:47.847Z" },
 ]
 
 [[package]]
