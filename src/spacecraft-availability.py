@@ -80,11 +80,14 @@ spice_client.KERNEL_LOCATIONS.update(
         #     "DIRECTORY": "kernels/spk/",
         #     "PATTERNS": ["M10_archive_1.bsp"],
         # },
-        # "Helios 1/2": {
-        #     "BASE": "https://naif.jpl.nasa.gov/pub/naif/HELIOS/",
-        #     "DIRECTORY": "kernels/spk/",
-        #     "PATTERNS": ["???????_???????_?????_?????.bsp"],
-        # },
+        "Helios 1/2": {
+            "BASE": "https://naif.jpl.nasa.gov/pub/naif/HELIOS/",
+            "DIRECTORY": "kernels/spk/",
+            "PATTERNS": [
+                "???????_???????_?????_?????.bsp",
+                "????????_???????_?????_?????.bsp",
+            ],
+        },
         "PSP": {
             "BASE": "https://spdf.gsfc.nasa.gov/pub/data/psp/",
             "DIRECTORY": "ephemeris/spice/ephemerides/",
@@ -94,14 +97,14 @@ spice_client.KERNEL_LOCATIONS.update(
 )
 
 spacecraft_info: Dict[str, Dict[str, Any]] = {
-    # "Helios 2": {
-    #     "ID": "Helios 2",
-    #     "Time Range": (dt.datetime(1976, 1, 16), dt.datetime(1979, 12, 22)),
-    # },
-    # "Helios 1": {
-    #     "ID": "Helios 1",
-    #     "Time Range": (dt.datetime(1974, 12, 11), dt.datetime(1981, 2, 17)),
-    # },
+    "Helios 2": {
+        "ID": "Helios 2",
+        "Time Range": (dt.datetime(1976, 1, 16), dt.datetime(1979, 12, 22)),
+    },
+    "Helios 1": {
+        "ID": "Helios 1",
+        "Time Range": (dt.datetime(1974, 12, 11), dt.datetime(1986, 3, 14)),
+    },
     "BepiColombo": {
         "ID": "BEPICOLOMBO MPO",
         "Time Range": (dt.datetime(2018, 10, 30), dt.datetime.today()),
@@ -161,7 +164,7 @@ ax.set_title(
 )
 
 ax.margins(x=0, y=0)
-ax.set_ylim(-0.5, 3 - 0.5)
+ax.set_ylim(-0.5, len(spacecraft_info) - 0.5)
 ax.tick_params(axis="x", rotation=-90)
 ax.xaxis.set_minor_locator(MonthLocator())
 
