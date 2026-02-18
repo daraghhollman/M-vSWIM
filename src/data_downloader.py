@@ -7,7 +7,6 @@ import sunpy_soar  # Required to register the Solar Orbiter Fido clients. Will t
 from astropy.io import ascii
 from astropy.table import Table
 from astropy.time import Time
-from hermpy.data import parse_messenger_mag
 from hermpy.net import ClientMESSENGER
 from sunpy.net import Fido
 from sunpy.net import attrs as a
@@ -164,7 +163,9 @@ def get_messenger_data(time_range: TimeRange, instrument: str = "MAG"):
                     },
                 )
 
-                # Downcast precision from f64 to f32
+                # Downcast precision from f64 to f32 to be consistent with the
+                # above spacecraft. MESSENGER's instrument recision is still
+                # far below this, so there is no scientific concern.
                 file_data = file_data.with_columns(
                     pl.col("UTC"),
                     pl.col("Br [nT]").cast(pl.Float32),
