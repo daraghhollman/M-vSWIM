@@ -8,6 +8,7 @@ around the sun. We can look at four groups in heliocentric distance: All, <
 """
 
 import os
+import sys
 from pathlib import Path
 
 import astropy.units as u
@@ -18,6 +19,10 @@ import requests
 import spiceypy as spice
 from hermpy.net import ClientSPICE
 from matplotlib.ticker import MultipleLocator
+
+# Add to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src/"))
+from orbit_numbers import get_orbit_number
 
 DATA_DIRECTORY = Path(__file__).parent.parent.parent / "data/"
 FIGURE_DIRECTORY = Path(__file__).parent.parent.parent / "figures/"
@@ -46,12 +51,12 @@ def main():
     print("Solar Wind Gaps")
     print(solar_wind_gaps)
 
-    print(solar_wind_intervals["Duration"].max())
-
     # Do some cool plotting
 
     plot_solar_wind_intervals(solar_wind_intervals)
     plot_solar_wind_gaps(solar_wind_gaps)
+
+    plot_time_per_orbit(solar_wind_intervals)
 
 
 def plot_solar_wind_intervals(solar_wind_intervals: pl.DataFrame) -> None:
@@ -227,6 +232,13 @@ def find_solar_wind_intervals(crossings: pl.DataFrame):
         ),
     )
 
+    # Add orbit number to each interval
+    intervals = intervals.with_columns(
+        pl.col("Start Time")
+        .map_elements(get_orbit_number, return_dtype=pl.Int64)
+        .alias("Orbit Number")
+    )
+
     # Add the heliocentric distance of Mercury at the mid time
     spice_client = ClientSPICE()
 
@@ -272,6 +284,13 @@ def find_solar_wind_gaps(solar_wind_intervals: pl.DataFrame):
         .unnest("Gap")
     )
 
+    # Add orbit number to each interval
+    gaps = gaps.with_columns(
+        pl.col("Start Time")
+        .map_elements(get_orbit_number, return_dtype=pl.Int64)
+        .alias("Orbit Number")
+    )
+
     # Add their length and middle time.
     gaps = gaps.with_columns(
         (pl.col("End Time") - pl.col("Start Time")).alias("Duration"),
@@ -312,6 +331,69 @@ def get_heliocentric_distances(times: pl.Series) -> pl.Series:
     distances = distances.to_value("au")
 
     return pl.Series(distances)
+
+
+def plot_time_per_orbit(intervals: pl.DataFrame) -> None:
+
+    # We first need to sum all the durations for the same orbit number
+    orbits = (
+        intervals.group_by("Orbit Number")
+        .agg(pl.col("Duration").sum())
+        .sort("Orbit Number")
+    )
+
+    distances = (
+        intervals.group_by("Orbit Number")
+        .agg(pl.col("Heliocentric Distance [au]").mean())
+        .sort("Orbit Number")
+    )
+
+    _, ax = plt.subplots(figsize=(6, 4))
+
+    duration = orbits["Duration"].dt.total_hours(fractional=True)
+    ax.plot(
+        orbits["Orbit Number"],
+        duration,
+        color="grey",
+        label="Total Solar Wind Duration",
+    )
+
+    # A smoothed average
+    m = 20
+    ax.plot(
+        orbits["Orbit Number"],
+        np.convolve(duration, np.ones(m) / m, mode="same"),
+        color="black",
+        label=f"Moving Average over $M = {m}$ orbits",
+    )
+
+    # Lets also plot heliocentric distance for comparison
+    twin = ax.twinx()
+    twin.plot(
+        distances["Orbit Number"],
+        distances["Heliocentric Distance [au]"],
+        color="cornflowerblue",
+        alpha=0.5,
+    )
+
+    twin.yaxis.set_ticks(
+        np.arange(0, 0.5 + 0.05, 0.05),
+        # labels=[None] * 6 + ["0.30", "0.35", "0.40", "0.45", "0.50"],
+    )
+
+    twin.yaxis.label.set_color("cornflowerblue")
+    twin.tick_params(axis="y", colors="cornflowerblue")
+    twin.spines["right"].set_edgecolor("cornflowerblue")
+
+    twin.set_ylabel("Heliocentric Distance [au]")
+
+    ax.set_xlabel("Orbit Number")
+    ax.set_ylabel("Time in Solar Wind [hours]")
+
+    ax.legend(loc="center right")
+
+    plt.tight_layout()
+    plt.savefig(FIGURE_DIRECTORY / "solar-wind-per-orbit.pdf", format="pdf")
 
 
 if __name__ == "__main__":
