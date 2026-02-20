@@ -10,6 +10,7 @@ dependencies = [
     "hermpy",
     "numpy>=2.4.1",
     "polars>=1.38.1",
+    "scipy>=1.17.0",
     "sunpy>=7.1.0",
     "sunpy-soar>=1.12.0",
 ]
