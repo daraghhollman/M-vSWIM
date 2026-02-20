@@ -59,9 +59,6 @@ def create_orbit_table():
 
 def get_orbit_number(time: dt.datetime):
 
-    if time > MISSION_END or time < MISSION_START:
-        raise ValueError(f"Queried time: {time} is outside MESSENGER's orbital period.")
-
     # If the table doesn't exist we must generate it
     if not os.path.exists(ORBIT_TABLE_PATH):
         create_orbit_table()
