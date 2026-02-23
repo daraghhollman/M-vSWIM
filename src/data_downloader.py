@@ -17,7 +17,6 @@ DATA_PATH: Path = Path(__file__).parent.parent / "data/solo/"
 
 def main():
     # A quick example of how to use each of the below functions to access data.
-
     data = get_solar_orbiter_data(TimeRange("2021-01-01 00:00", "2021-01-02 00:00"))
 
     print(data)
@@ -30,8 +29,84 @@ def main():
 
     print(data)
 
+    data = get_helios1_data(TimeRange("1981-01-01 00:00", "1981-01-02 00:00"))
 
-def get_solar_orbiter_data(time_range: TimeRange, instrument: str = "MAG"):
+    print(data)
+
+    data = get_helios2_data(TimeRange("1979-01-01 00:00", "1979-01-02 00:00"))
+
+    print(data)
+
+
+def get_helios1_data(time_range: TimeRange, instrument: str = "MAG") -> pl.DataFrame:
+    return get_helios_data(time_range, spacecraft=1, instrument=instrument)
+
+
+def get_helios2_data(time_range: TimeRange, instrument: str = "MAG") -> pl.DataFrame:
+    return get_helios_data(time_range, spacecraft=2, instrument=instrument)
+
+
+def get_helios_data(time_range: TimeRange, spacecraft: int, instrument: str = "MAG"):
+
+    assert time_range.start is not None
+    assert time_range.end is not None
+
+    match instrument:
+
+        case "MAG":
+
+            if spacecraft == 1:
+                dataset = a.cdaweb.Dataset.helios1_40sec_mag_plasma  # type: ignore[attr-defined]
+
+            else:
+                dataset = a.cdaweb.Dataset.helios2_40sec_mag_plasma  # type: ignore[attr-defined]
+
+            result = Fido.search(
+                a.Time(time_range.start.to_string(), time_range.end.to_string()),
+                dataset,
+            )
+
+            local_files = Fido.fetch(result, path=DATA_PATH)
+
+            dataframes = []
+            for path in local_files:
+                cdf_file = cdflib.CDF(path)
+
+                epoch = cdf_file.varget("Epoch")
+
+                assert isinstance(epoch, np.ndarray)
+                time = cdflib.cdfepoch.to_datetime(epoch)
+
+                file_data = pl.DataFrame(
+                    {
+                        "UTC": time,
+                        "Br [nT]": cdf_file.varget("B_R"),
+                        "Bt [nT]": cdf_file.varget("B_T"),
+                        "Bn [nT]": cdf_file.varget("B_N"),
+                    }
+                )
+
+                file_data = remove_helios_nans(file_data)
+
+                dataframes.append(file_data)
+
+            return pl.concat(dataframes)
+
+        case _:
+            raise ValueError(f"Instrument '{instrument}' not yet implemented.")
+
+
+def remove_helios_nans(data: pl.DataFrame) -> pl.DataFrame:
+
+    # There are extreme negative values in this dataset which I believe to be
+    # in place of missing data. These are all negative, and ~ 1e31 in
+    # magnitude.
+    return data.remove(pl.col("Br [nT]") < -1e30)
+
+
+def get_solar_orbiter_data(
+    time_range: TimeRange, instrument: str = "MAG"
+) -> pl.DataFrame:
 
     assert time_range.start is not None
     assert time_range.end is not None
@@ -73,7 +148,7 @@ def get_solar_orbiter_data(time_range: TimeRange, instrument: str = "MAG"):
             raise ValueError(f"Instrument '{instrument}' not yet implemented.")
 
 
-def get_parker_data(time_range: TimeRange, instrument: str = "MAG"):
+def get_parker_data(time_range: TimeRange, instrument: str = "MAG") -> pl.DataFrame:
 
     assert time_range.start is not None
     assert time_range.end is not None
@@ -116,7 +191,7 @@ def get_parker_data(time_range: TimeRange, instrument: str = "MAG"):
             raise ValueError(f"Instrument '{instrument}' not yet implemented.")
 
 
-def get_messenger_data(time_range: TimeRange, instrument: str = "MAG"):
+def get_messenger_data(time_range: TimeRange, instrument: str = "MAG") -> pl.DataFrame:
     assert time_range.start is not None
     assert time_range.end is not None
 
