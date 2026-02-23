@@ -57,6 +57,23 @@ def main():
     plot_solar_wind_gaps(solar_wind_gaps)
 
     plot_time_per_orbit(solar_wind_intervals)
+    scatter_sw_time_vs_heliocentric_distance(solar_wind_intervals)
+
+
+def scatter_sw_time_vs_heliocentric_distance(
+    solar_wind_intervals: pl.DataFrame,
+) -> None:
+
+    _, ax = plt.subplots()
+
+    ax.scatter(
+        solar_wind_intervals["Heliocentric Distance [au]"],
+        solar_wind_intervals["Duration"].dt.total_hours(fractional=True),
+        color="black",
+        marker=".",
+    )
+
+    plt.show()
 
 
 def plot_solar_wind_intervals(solar_wind_intervals: pl.DataFrame) -> None:
