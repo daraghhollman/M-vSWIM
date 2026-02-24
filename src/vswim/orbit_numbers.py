@@ -13,7 +13,9 @@ import spiceypy as spice
 from hermpy.net import ClientSPICE
 from scipy.signal import find_peaks
 
-ORBIT_TABLE_PATH = Path(__file__).parent.parent / "data/messenger-orbit-table.csv"
+ORBIT_TABLE_PATH = (
+    Path(__file__).parent.parent.parent / "data/messenger-orbit-table.csv"
+)
 MISSION_START = dt.datetime(2011, 3, 18)
 MISSION_END = dt.datetime(2015, 4, 30)
 

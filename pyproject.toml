@@ -17,3 +17,9 @@ dependencies = [
 
 [tool.uv.sources]
 hermpy = { git = "https://github.com/daraghhollman/hermpy-1.0.0.git" }
+
+[build-system]
+requires = ["setuptools"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

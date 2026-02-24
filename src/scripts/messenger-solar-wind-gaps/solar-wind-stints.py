@@ -1,12 +1,13 @@
 """
-This is a copy of src/messenger-solar-wind-gaps-solar-wind-stins.py with the
-exception that we include magnetosheath as solar wind. This is to test if we
-can use something like Charlie Bowers' FFNN to predict solar wind while
-MESSENGER was within the magnetosheath.
+We are interested in knowing the lengths of continous time spent by MESSENGER
+in the solar wind. We base this on the crossing list by Hollman et al. (2026).
+
+We are also interested in looking at how these change with Mercury's precession
+around the sun. We can look at four groups in heliocentric distance: All, <
+0.36 AU, between 0.36 AU and 0.41 AU, and > 0.41.
 """
 
 import os
-import sys
 from pathlib import Path
 
 import astropy.units as u
@@ -18,19 +19,17 @@ import spiceypy as spice
 from hermpy.net import ClientSPICE
 from matplotlib.ticker import MultipleLocator
 
-# Add to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src/"))
-from orbit_numbers import get_orbit_number
+from vswim.orbit_numbers import get_orbit_number
 
-DATA_DIRECTORY = Path(__file__).parent.parent.parent / "data/"
-FIGURE_DIRECTORY = Path(__file__).parent.parent.parent / "figures/"
+DATA_DIRECTORY = Path(__file__).parent.parent.parent.parent / "data/"
+FIGURE_DIRECTORY = Path(__file__).parent.parent.parent.parent / "figures/"
 
 
 def main():
 
     # Check if file exists before attempting to recreate
-    sw_cache_path = DATA_DIRECTORY / "sw_msh_intervals.parquet"
-    gap_cache_path = DATA_DIRECTORY / "sw_msh_gap_intervals.parquet"
+    sw_cache_path = DATA_DIRECTORY / "solar_wind_intervals.parquet"
+    gap_cache_path = DATA_DIRECTORY / "gap_intervals.parquet"
 
     if not os.path.exists(sw_cache_path) or not os.path.exists(gap_cache_path):
         crossings = load_crossings()
@@ -55,6 +54,23 @@ def main():
     plot_solar_wind_gaps(solar_wind_gaps)
 
     plot_time_per_orbit(solar_wind_intervals)
+    scatter_sw_time_vs_heliocentric_distance(solar_wind_intervals)
+
+
+def scatter_sw_time_vs_heliocentric_distance(
+    solar_wind_intervals: pl.DataFrame,
+) -> None:
+
+    _, ax = plt.subplots()
+
+    ax.scatter(
+        solar_wind_intervals["Heliocentric Distance [au]"],
+        solar_wind_intervals["Duration"].dt.total_hours(fractional=True),
+        color="black",
+        marker=".",
+    )
+
+    plt.show()
 
 
 def plot_solar_wind_intervals(solar_wind_intervals: pl.DataFrame) -> None:
@@ -93,13 +109,23 @@ def plot_solar_wind_intervals(solar_wind_intervals: pl.DataFrame) -> None:
             color="grey",
         )
 
+        inset_ax = ax.inset_axes([0.25, 0.45, 0.7, 0.45])
+        inset_ax.hist(
+            filtered_intervals["Duration"].dt.total_hours(fractional=True),
+            bins=bins[4:],
+            color="grey",
+        )
+
         ax.set_title(labels[i])
 
         ax.margins(x=0)
+        inset_ax.margins(x=0)
 
         ax.xaxis.set_major_locator(MultipleLocator(2))
+        inset_ax.xaxis.set_major_locator(MultipleLocator(2))
 
         ax.xaxis.set_minor_locator(MultipleLocator(0.5))
+        inset_ax.xaxis.set_minor_locator(MultipleLocator(0.5))
 
         if i % 2 == 0:
             ax.set_ylabel("Number of Solar Wind Stints")
@@ -108,7 +134,7 @@ def plot_solar_wind_intervals(solar_wind_intervals: pl.DataFrame) -> None:
             ax.set_xlabel("Solar Wind Stint Duration [hours]")
 
     plt.tight_layout()
-    plt.savefig(FIGURE_DIRECTORY / "sw-msh-stints.pdf", format="pdf")
+    plt.savefig(FIGURE_DIRECTORY / "solar-wind-stints.pdf", format="pdf")
 
 
 def plot_solar_wind_gaps(solar_wind_gaps: pl.DataFrame) -> None:
@@ -147,13 +173,23 @@ def plot_solar_wind_gaps(solar_wind_gaps: pl.DataFrame) -> None:
             color="grey",
         )
 
+        inset_ax = ax.inset_axes([0.25, 0.45, 0.7, 0.45])
+        inset_ax.hist(
+            filtered_intervals["Duration"].dt.total_hours(fractional=True),
+            bins=bins[2:],
+            color="grey",
+        )
+
         ax.set_title(labels[i])
 
         ax.margins(x=0)
+        inset_ax.margins(x=0)
 
         ax.xaxis.set_major_locator(MultipleLocator(2))
+        inset_ax.xaxis.set_major_locator(MultipleLocator(2))
 
         ax.xaxis.set_minor_locator(MultipleLocator(0.5))
+        inset_ax.xaxis.set_minor_locator(MultipleLocator(0.5))
 
         if i % 2 == 0:
             ax.set_ylabel("Number of Solar Wind Gaps")
@@ -162,7 +198,7 @@ def plot_solar_wind_gaps(solar_wind_gaps: pl.DataFrame) -> None:
             ax.set_xlabel("Solar Wind Gap Duration [hours]")
 
     plt.tight_layout()
-    plt.savefig(FIGURE_DIRECTORY / "sw-msh-gaps.pdf", format="pdf")
+    plt.savefig(FIGURE_DIRECTORY / "solar-wind-gaps.pdf", format="pdf")
 
 
 def load_crossings():
@@ -187,15 +223,14 @@ def load_crossings():
 def find_solar_wind_intervals(crossings: pl.DataFrame):
 
     intervals = (
-        # Filter first to only MP crossings
-        crossings.remove(pl.col("Label").str.contains("BS"))
-        .with_columns(
+        crossings.with_columns(
             pl.col("UTC").shift(-1).alias("Next UTC"),
             pl.col("Label").shift(-1).alias("Next Label"),
         )
-        # Filter instead to only MP_OUTs followed by MP_INs
-        .filter((pl.col("Label") == "MP_OUT") & (pl.col("Next Label") == "MP_IN"))
-        .select(
+        # Filter to only BS_OUTs followed by BS_INs
+        .filter(
+            (pl.col("Label") == "BS_OUT") & (pl.col("Next Label") == "BS_IN")
+        ).select(
             [
                 pl.col("UTC").alias("Start Time"),
                 pl.col("Next UTC").alias("End Time"),
@@ -372,7 +407,7 @@ def plot_time_per_orbit(intervals: pl.DataFrame) -> None:
     ax.legend(loc="center right")
 
     plt.tight_layout()
-    plt.savefig(FIGURE_DIRECTORY / "sw-msh-per-orbit.pdf", format="pdf")
+    plt.savefig(FIGURE_DIRECTORY / "solar-wind-per-orbit.pdf", format="pdf")
 
 
 if __name__ == "__main__":

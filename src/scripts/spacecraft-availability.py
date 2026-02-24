@@ -23,8 +23,8 @@ from sunpy.coordinates import frames
 # Define the critera with which we look within
 HELIOCENTRIC_DISTANCE_BOUNDS = (0.3 * u.au, 0.5 * u.au)
 
-DATA_DIRECTORY = Path(__file__).parent.parent / "data/"
-FIGURE_DIRECTORY = Path(__file__).parent.parent / "figures/"
+DATA_DIRECTORY = Path(__file__).parent.parent.parent / "data/"
+FIGURE_DIRECTORY = Path(__file__).parent.parent.parent / "figures/"
 
 
 def main():
