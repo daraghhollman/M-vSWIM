@@ -73,7 +73,11 @@ class InputData:
 
         new_data = pl.concat([self.data, other.data])
 
-        return InputData(new_data)
+        # Merge operator: |
+        # Prefers the other in this instance if both define the same metadata.
+        new_meta = self.metadata | other.metadata
+
+        return InputData(new_data, metadata=new_meta)
 
     def __repr__(self) -> str:
         return self.data.__repr__() + "\n" + self.metadata.__repr__()
