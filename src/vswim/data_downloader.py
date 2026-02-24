@@ -38,6 +38,19 @@ def main():
     print(data)
 
 
+def add_magnitude(
+    data: pl.DataFrame, field_columns: list[str] = ["Br [nT]", "Bt [nT]", "Bn [nT]"]
+) -> pl.DataFrame:
+
+    r, t, n = field_columns
+
+    new_data = data.with_columns(
+        (np.sqrt(pl.col(r) ** 2 + pl.col(t) ** 2 + pl.col(n) ** 2)).alias("|B|")
+    )
+
+    return new_data
+
+
 def get_helios1_data(time_range: TimeRange, instrument: str = "MAG") -> pl.DataFrame:
     return get_helios_data(time_range, spacecraft=1, instrument=instrument)
 
@@ -97,6 +110,8 @@ def get_helios_data(time_range: TimeRange, spacecraft: int, instrument: str = "M
                 (pl.col("UTC") >= time_range.start.to_datetime())
                 & (pl.col("UTC") < time_range.end.to_datetime())
             )
+
+            data = add_magnitude(data)
 
             return data
 
@@ -158,6 +173,8 @@ def get_solar_orbiter_data(
                 & (pl.col("UTC") < time_range.end.to_datetime())
             )
 
+            data = add_magnitude(data)
+
             return data
 
         case _:
@@ -208,6 +225,8 @@ def get_parker_data(time_range: TimeRange, instrument: str = "MAG") -> pl.DataFr
                 (pl.col("UTC") >= time_range.start.to_datetime())
                 & (pl.col("UTC") < time_range.end.to_datetime())
             )
+
+            data = add_magnitude(data)
 
             return data
 
