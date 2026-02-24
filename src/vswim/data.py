@@ -3,34 +3,21 @@
 from __future__ import annotations
 
 import datetime as dt
-from typing import Set
 
+import matplotlib.pyplot as plt
 import polars as pl
 
 
-class InputData:
+class MAGData:
 
     def __init__(
         self,
-        data: pl.DataFrame | None,
-        region_id: str | None = None,
-        orbit_numbers: int | Set[int] | None = None,
+        data: pl.DataFrame,
         time_column: str = "UTC",
         metadata: dict[str, str] = {},
     ):
         self.data = data
-        self._region_id = region_id
         self.metadata = metadata
-
-        if orbit_numbers is not None:
-            self._orbit_numbers: Set[int] | None = (
-                orbit_numbers
-                if isinstance(orbit_numbers, Set)
-                else set([orbit_numbers])
-            )
-
-        else:
-            self._orbit_numbers = None
 
         self._time_column = time_column
 
@@ -54,8 +41,6 @@ class InputData:
         return len(self.data)
 
     def _test_data_format(self) -> None:
-        if self.data is None:
-            return
 
         # Data must have a valid time column
         if self._time_column not in self.data.columns:
@@ -65,11 +50,22 @@ class InputData:
         if not self.data.equals(self.data.sort(by=self._time_column)):
             raise ValueError("Data is not chronological.")
 
-    def __add__(self, other: InputData) -> InputData:
+    def quickplot(self) -> None:
 
-        # Check if both objects already have data stored
-        if self.data is None or other.data is None:
-            raise ValueError("Cannot add objects without associated data.")
+        _, ax = plt.subplots()
+
+        for column in self.data.columns:
+
+            if column == self._time_column:
+                continue
+
+            ax.plot(self.data[self._time_column], self.data[column], label=column)
+
+        ax.legend()
+
+        plt.show()
+
+    def __add__(self, other: MAGData) -> MAGData:
 
         new_data = pl.concat([self.data, other.data])
 
@@ -77,7 +73,7 @@ class InputData:
         # Prefers the other in this instance if both define the same metadata.
         new_meta = self.metadata | other.metadata
 
-        return InputData(new_data, metadata=new_meta)
+        return MAGData(new_data, metadata=new_meta)
 
     def __repr__(self) -> str:
         return self.data.__repr__() + "\n" + self.metadata.__repr__()
