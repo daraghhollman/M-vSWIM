@@ -109,29 +109,3 @@ class Data:
     def __repr__(self) -> str:
         print(f"{self.region_id} data across {len(self._orbit_numbers)} orbit(s)")
         return self.data.__repr__()
-
-
-# Examples
-d1 = Data(
-    pl.DataFrame(
-        {
-            "UTC": [dt.datetime(2020, 1, 1), dt.datetime(2021, 1, 1)],
-            "Something Else": [0, 5],
-        }
-    ),
-    "SW",
-    1,
-)
-
-d2 = Data(
-    pl.DataFrame(
-        {
-            "UTC": [dt.datetime(2022, 1, 1), dt.datetime(2023, 1, 1)],
-            "Something Else": [0, 5],
-        }
-    ),
-    "SW",
-    {2, 5, 18},
-)
-
-print(d1 + d2)
