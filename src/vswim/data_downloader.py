@@ -144,8 +144,8 @@ def get_solar_orbiter_data(
                     {
                         "UTC": time,
                         "Br [nT]": mag[:, 0],
-                        "Bt [nT]": mag[:, 0],
-                        "Bn [nT]": mag[:, 0],
+                        "Bt [nT]": mag[:, 1],
+                        "Bn [nT]": mag[:, 2],
                     }
                 )
                 dataframes.append(file_data)
@@ -194,8 +194,8 @@ def get_parker_data(time_range: TimeRange, instrument: str = "MAG") -> pl.DataFr
                     {
                         "UTC": time,
                         "Br [nT]": mag[:, 0],
-                        "Bt [nT]": mag[:, 0],
-                        "Bn [nT]": mag[:, 0],
+                        "Bt [nT]": mag[:, 1],
+                        "Bn [nT]": mag[:, 2],
                     }
                 )
 
