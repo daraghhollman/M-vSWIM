@@ -8,25 +8,33 @@ from typing import Set
 import polars as pl
 
 
-class Data:
+class InputData:
 
     def __init__(
         self,
         data: pl.DataFrame | None,
-        region_id: str,
-        orbit_numbers: int | Set[int],
+        region_id: str | None = None,
+        orbit_numbers: int | Set[int] | None = None,
         time_column: str = "UTC",
+        metadata: dict[str, str] = {},
     ):
         self.data = data
         self._region_id = region_id
-        self._orbit_numbers: Set[int] = (
-            orbit_numbers if isinstance(orbit_numbers, Set) else set([orbit_numbers])
-        )
+        self.metadata = metadata
+
+        if orbit_numbers is not None:
+            self._orbit_numbers: Set[int] | None = (
+                orbit_numbers
+                if isinstance(orbit_numbers, Set)
+                else set([orbit_numbers])
+            )
+
+        else:
+            self._orbit_numbers = None
+
         self._time_column = time_column
 
-        self._test_region_id()
         self._test_data_format()
-        self._flag_multiple_orbits()
 
     @property
     def length(self) -> dt.timedelta:
@@ -45,37 +53,6 @@ class Data:
 
         return len(self.data)
 
-    @property  # Region ID should be immutable
-    def region_id(self) -> str:
-        return self._region_id
-
-    @property  # Orbit numbers should be immutable
-    def orbit_numbers(self) -> Set[int]:
-        return self._orbit_numbers
-
-    @property  # Any flags should be immutable
-    def is_across_multiple_orbits(self) -> bool:
-        return self._is_across_multiple_orbits
-
-    def _test_region_id(self) -> None:
-        """
-        Ensure that input region id is correctly formatted.
-        """
-
-        region_options = ["SW", "MSh", "MSp"]
-
-        if self._region_id not in region_options:
-            raise ValueError(
-                f"Input region ID '{self._region_id}' is not one of the valid options: {region_options}"
-            )
-
-    def _flag_multiple_orbits(self) -> None:
-        if len(self._orbit_numbers) > 1:
-            self._is_across_multiple_orbits = True
-
-        else:
-            self._is_across_multiple_orbits = False
-
     def _test_data_format(self) -> None:
         if self.data is None:
             return
@@ -88,13 +65,7 @@ class Data:
         if not self.data.equals(self.data.sort(by=self._time_column)):
             raise ValueError("Data is not chronological.")
 
-    def __add__(self, other: Data) -> Data:
-
-        # Check if regions are the same
-        if self.region_id != other.region_id:
-            raise ValueError(
-                f"Cannot add region data with differing IDs: {self.region_id} and {other.region_id}"
-            )
+    def __add__(self, other: InputData) -> InputData:
 
         # Check if both objects already have data stored
         if self.data is None or other.data is None:
@@ -102,10 +73,7 @@ class Data:
 
         new_data = pl.concat([self.data, other.data])
 
-        orbit_numbers = set([*self.orbit_numbers, *other.orbit_numbers])
-
-        return Data(new_data, self.region_id, orbit_numbers)
+        return InputData(new_data)
 
     def __repr__(self) -> str:
-        print(f"{self.region_id} data across {len(self._orbit_numbers)} orbit(s)")
-        return self.data.__repr__()
+        return self.data.__repr__() + "\n" + self.metadata.__repr__()
