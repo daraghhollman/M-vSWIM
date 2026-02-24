@@ -90,7 +90,15 @@ def get_helios_data(time_range: TimeRange, spacecraft: int, instrument: str = "M
 
                 dataframes.append(file_data)
 
-            return pl.concat(dataframes)
+            data: pl.DataFrame = pl.concat(dataframes)
+
+            # Filter data to time_range
+            data = data.filter(
+                (pl.col("UTC") >= time_range.start.to_datetime())
+                & (pl.col("UTC") < time_range.end.to_datetime())
+            )
+
+            return data
 
         case _:
             raise ValueError(f"Instrument '{instrument}' not yet implemented.")
@@ -142,7 +150,15 @@ def get_solar_orbiter_data(
                 )
                 dataframes.append(file_data)
 
-            return pl.concat(dataframes)
+            data: pl.DataFrame = pl.concat(dataframes)
+
+            # Filter data to time_range
+            data = data.filter(
+                (pl.col("UTC") >= time_range.start.to_datetime())
+                & (pl.col("UTC") < time_range.end.to_datetime())
+            )
+
+            return data
 
         case _:
             raise ValueError(f"Instrument '{instrument}' not yet implemented.")
@@ -185,7 +201,15 @@ def get_parker_data(time_range: TimeRange, instrument: str = "MAG") -> pl.DataFr
 
                 dataframes.append(file_data)
 
-            return pl.concat(dataframes)
+            data: pl.DataFrame = pl.concat(dataframes)
+
+            # Filter data to time_range
+            data = data.filter(
+                (pl.col("UTC") >= time_range.start.to_datetime())
+                & (pl.col("UTC") < time_range.end.to_datetime())
+            )
+
+            return data
 
         case _:
             raise ValueError(f"Instrument '{instrument}' not yet implemented.")
