@@ -12,7 +12,7 @@ from sunpy.net import Fido
 from sunpy.net import attrs as a
 from sunpy.time import TimeRange
 
-DATA_PATH: Path = Path(__file__).parent.parent / "data/solo/"
+DATA_PATH: Path = Path(__file__).parent.parent.parent / "data/solo/"
 
 
 def main():
@@ -45,7 +45,7 @@ def add_magnitude(
     r, t, n = field_columns
 
     new_data = data.with_columns(
-        (np.sqrt(pl.col(r) ** 2 + pl.col(t) ** 2 + pl.col(n) ** 2)).alias("|B|")
+        (np.sqrt(pl.col(r) ** 2 + pl.col(t) ** 2 + pl.col(n) ** 2)).alias("|B| [nT]")
     )
 
     return new_data
