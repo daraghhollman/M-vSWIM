@@ -12,7 +12,7 @@ from sunpy.net import Fido
 from sunpy.net import attrs as a
 from sunpy.time import TimeRange
 
-DATA_PATH: Path = Path(__file__).parent.parent.parent / "data/solo/"
+DATA_PATH: Path = Path(__file__).parent.parent.parent.parent / "data/spacecraft/"
 
 
 def main():
