@@ -61,11 +61,25 @@ def scatter_sw_time_vs_heliocentric_distance(
     solar_wind_intervals: pl.DataFrame,
 ) -> None:
 
-    _, ax = plt.subplots()
+    orbits = (
+        solar_wind_intervals.group_by("Orbit Number")
+        .agg(pl.col("Duration").sum())
+        .sort("Orbit Number")
+    )
+
+    distances = (
+        solar_wind_intervals.group_by("Orbit Number")
+        .agg(pl.col("Heliocentric Distance [au]").mean())
+        .sort("Orbit Number")
+    )
+    distances = distances["Heliocentric Distance [au]"]
+    duration = orbits["Duration"].dt.total_hours(fractional=True)
+
+    _, ax = plt.subplots(figsize=(6, 4))
 
     ax.scatter(
-        solar_wind_intervals["Heliocentric Distance [au]"],
-        solar_wind_intervals["Duration"].dt.total_hours(fractional=True),
+        distances,
+        duration,
         color="black",
         marker=".",
     )
