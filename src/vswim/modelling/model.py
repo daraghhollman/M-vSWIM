@@ -1,15 +1,20 @@
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Tuple
 
 import astropy.units as u
+import gpflow
+import matplotlib.pyplot as plt
 import numpy as np
-import tensorflow as tf
 from gpflow import Parameter
 from gpflow.kernels import Kernel, Periodic, RationalQuadratic
-from gpflow.models import SGPR, GPModel
-from keras.optimizers import Adam, Optimizer
+from gpflow.models import SGPR
+from gpflow.monitor import Monitor, MonitorTaskGroup, ScalarToTensorBoard
+from gpflow.optimizers import Scipy
+from keras.optimizers import Optimizer
 from numpy.typing import NDArray
 from sklearn.preprocessing import MinMaxScaler
+from tensorflow import Tensor
 
 from vswim.constants import CARRINGTON_ROTATION
 
@@ -62,11 +67,12 @@ class TimeScaler:
 # Define a class to hold the model and associated functions
 @dataclass
 class SolarWindModel:
-    model: GPModel
+    model: SGPR
     data: Tuple[NDArray[np.datetime64], NDArray[Any]]
     optimiser: Optimizer
-    seed: int
     time_scaler: TimeScaler  # Store scaler on model for later inverse transforms
+    seed: int
+    log_directory: Path
 
     @classmethod
     def build(
@@ -75,6 +81,7 @@ class SolarWindModel:
         output: NDArray[Any],
         n_inducing_points: int,
         seed: int,
+        log_directory: Path,
     ) -> "SolarWindModel":
         """
         We choose to define how our model is constructed here so that the
@@ -100,21 +107,71 @@ class SolarWindModel:
 
         gpmodel = SGPR((X, Y), kernel=kernel, inducing_variable=inducing_points)
 
-        opt = Adam()
+        opt = Scipy()
 
         return cls(
             model=gpmodel,
             data=(X, Y),
             optimiser=opt,
-            seed=seed,
             time_scaler=time_scaler,
+            seed=seed,
+            log_directory=log_directory,
         )
 
-    def train_model(self, n_iterations: int) -> None:
+    def train_model(self) -> None:
         """
         Perform iterations of training.
         """
-        pass
+
+        loss_monitor = ScalarToTensorBoard(
+            str(self.log_directory / "training-loss"),
+            self.get_training_loss,
+            "Training Loss",
+        )
+        task_group = MonitorTaskGroup(loss_monitor, period=3)
+        monitor = Monitor(task_group)
+
+        self.optimiser.minimize(
+            self.model.training_loss,
+            self.model.trainable_variables,
+            step_callback=monitor,
+        )
+
+    def get_training_loss(self) -> Tensor:
+        return self.model.training_loss()
+
+    def info(self) -> None:
+        """
+        Prints info about the trained parameters.
+        """
+        gpflow.utilities.print_summary(self.model)
+
+    def quicklook(self) -> None:
+        Xplot = np.linspace(0, 1, 100)[:, None]
+
+        f_mean, f_var = self.model.predict_f(Xplot, full_cov=False)
+        y_mean, y_var = self.model.predict_y(Xplot)
+
+        f_lower = f_mean - 1.96 * np.sqrt(f_var)
+        f_upper = f_mean + 1.96 * np.sqrt(f_var)
+        y_lower = y_mean - 1.96 * np.sqrt(y_var)
+        y_upper = y_mean + 1.96 * np.sqrt(y_var)
+
+        plt.plot(*self.data, "kx", mew=2, label="input data")
+        plt.plot(Xplot, f_mean, "-", color="C0", label="mean")
+        plt.plot(Xplot, f_lower, "--", color="C0", label="f 95% confidence")
+        plt.plot(Xplot, f_upper, "--", color="C0")
+        plt.fill_between(
+            Xplot[:, 0], f_lower[:, 0], f_upper[:, 0], color="C0", alpha=0.1
+        )
+        plt.plot(Xplot, y_lower, ".", color="C0", label="Y 95% confidence")
+        plt.plot(Xplot, y_upper, ".", color="C0")
+        plt.fill_between(
+            Xplot[:, 0], y_lower[:, 0], y_upper[:, 0], color="C0", alpha=0.1
+        )
+        plt.legend()
+
+        plt.show()
 
 
 def _build_kernel(time_scaler: TimeScaler) -> Kernel:
@@ -134,5 +191,7 @@ def _build_kernel(time_scaler: TimeScaler) -> Kernel:
         period=Parameter(scaled_period, trainable=True),
     )
 
-    # We may also expect a trend
-    return periodic_component
+    # We will capture the general shape with a rational quadratic
+    trend = RationalQuadratic()
+
+    return trend + RationalQuadratic() * periodic_component
