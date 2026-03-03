@@ -1,6 +1,8 @@
 from numpy.typing import NDArray
 from sklearn.preprocessing import MinMaxScaler
 
+__all__ = ["TimeScaler"]
+
 
 class TimeScaler:
 

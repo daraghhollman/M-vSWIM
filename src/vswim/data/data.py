@@ -7,6 +7,8 @@ import datetime as dt
 import matplotlib.pyplot as plt
 import polars as pl
 
+__all__ = ["MAGData"]
+
 
 class MAGData:
 

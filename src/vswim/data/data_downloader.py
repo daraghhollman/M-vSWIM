@@ -14,6 +14,15 @@ from sunpy.time import TimeRange
 
 DATA_PATH: Path = Path(__file__).parent.parent.parent.parent / "data/spacecraft/"
 
+__all__ = [
+    "DATA_PATH",
+    "add_magnitude",
+    "get_helios_data",
+    "get_solar_orbiter_data",
+    "get_parker_data",
+    "get_messenger_data",
+]
+
 
 def main():
     # A quick example of how to use each of the below functions to access data.
