@@ -10,7 +10,7 @@ from numpy.typing import NDArray
 from sunpy.time import TimeRange
 
 from vswim.data import MAGData, get_solar_orbiter_data
-from vswim.modelling import SolarWindModel
+from vswim.modelling import GapGenerator, SolarWindModel
 
 # Create a unique log directory for this run
 LOG_DIR = Path("./logs/" + dt.datetime.now().strftime("%Y-%m-%d--%H:%M"))
@@ -22,12 +22,17 @@ tf.random.set_seed(SEED)
 
 # Make Data object
 mag: MAGData = MAGData(
-    get_solar_orbiter_data(TimeRange("2021-01-01", "2021-01-05")),
+    get_solar_orbiter_data(TimeRange("2021-01-01", "2021-01-02")),
     metadata={"Spacecraft": "Solar Orbiter"},
 )
 
 X: NDArray = mag.data["UTC"].to_numpy().reshape(-1, 1)
 Y: NDArray = mag.data["|B| [nT]"].to_numpy().reshape(-1, 1).astype("float64")
+
+gap_generator = GapGenerator.from_constants(
+    gap_size=2 * 60, gap_interval=4 * 60, seed=SEED
+)
+X, Y = gap_generator.create_gaps(X, Y)
 
 # For now we include the full dataset. This model class has functionality to
 # separate a training and testing set.

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Any, Callable, Iterable, List, Tuple
 
 import astropy.units as u
 import gpflow
@@ -20,6 +20,7 @@ from vswim.constants import CARRINGTON_ROTATION
 
 __all__ = [
     "TimeScaler",
+    "GapGenerator",
     "SolarWindModel",
 ]
 
@@ -62,6 +63,97 @@ class TimeScaler:
         data_range_ns = float(self._scaler.data_range_[0])
         duration_ns = duration_seconds * 1e9
         return duration_ns / data_range_ns
+
+
+class GapGenerator:
+
+    def __init__(
+        self,
+        get_gap_size: Callable,
+        get_gap_interval: Callable,
+        seed: int | None = None,
+    ) -> None:
+
+        self.get_gap_size = get_gap_size
+        self.get_gap_interval = get_gap_interval
+        self.rng = np.random.default_rng(seed)
+
+    def generate_gaps(self, n) -> List[Tuple[int, int]]:
+        """
+        Returns list of (start, end) indices for gaps within length n.
+        """
+        gaps = []
+        start_index = 0
+        while start_index < n:
+
+            # We should always have data at the start, so we first move by the
+            # interval, then create the gap.
+            interval = self.get_gap_interval(self.rng)
+            start_index += interval
+
+            # Similarly, we always want an interval sized gap at the end.
+            if start_index >= n - interval:
+                break
+
+            size = self.get_gap_size(self.rng)
+
+            # We use min as a safety check here, so we don't try to make gaps
+            # longer than the length of data left. However, this should be
+            # caught by the above (n - interval) check for all cases where
+            # intervals are longer than gaps.
+            end_index = min(n, start_index + size)
+
+            # Record this gap
+            gaps.append((start_index, end_index))
+
+            start_index = end_index
+
+        return gaps
+
+    def generate_mask(self, n_samples):
+        """
+        Returns boolean mask of shape (n_samples,)
+        True  = keep
+        False = gap
+        """
+        mask = np.ones(n_samples, dtype=bool)
+        gaps = self.generate_gaps(n_samples)
+
+        for start, end in gaps:
+            mask[start:end] = False
+
+        return mask
+
+    def create_gaps(self, *arrays: NDArray[Any]) -> Tuple[NDArray, ...]:
+        """
+        Creates the gaps in the input numpy array according the generator
+        constructed with. Applies aligned gaps to multiple arrays.
+        Returns tuple of masked arrays.
+        """
+
+        if len(arrays) == 0:
+            raise ValueError("At least one array required")
+
+        n_samples = arrays[0].shape[0]
+
+        # Validate alignment
+        for array in arrays:
+            if array.shape[0] != n_samples:
+                raise ValueError("All arrays must share first dimension")
+
+        mask = self.generate_mask(n_samples)
+
+        return tuple(array[mask] for array in arrays)
+
+    @classmethod
+    def from_constants(
+        cls, gap_size: float, gap_interval: float, seed: int | None = None
+    ):
+        return cls(
+            get_gap_size=lambda _: gap_size,
+            get_gap_interval=lambda _: gap_interval,
+            seed=seed,
+        )
 
 
 # Define a class to hold the model and associated functions
@@ -147,7 +239,7 @@ class SolarWindModel:
         gpflow.utilities.print_summary(self.model)
 
     def quicklook(self) -> None:
-        Xplot = np.linspace(0, 1, 100)[:, None]
+        Xplot = np.linspace(0, 1, 1000)[:, None]
 
         f_mean, f_var = self.model.predict_f(Xplot, full_cov=False)
         y_mean, y_var = self.model.predict_y(Xplot)
@@ -157,15 +249,15 @@ class SolarWindModel:
         y_lower = y_mean - 1.96 * np.sqrt(y_var)
         y_upper = y_mean + 1.96 * np.sqrt(y_var)
 
-        plt.plot(*self.data, "kx", mew=2, label="input data")
+        plt.scatter(*self.data, color="black", marker=".", label="input data")
         plt.plot(Xplot, f_mean, "-", color="C0", label="mean")
         plt.plot(Xplot, f_lower, "--", color="C0", label="f 95% confidence")
         plt.plot(Xplot, f_upper, "--", color="C0")
         plt.fill_between(
             Xplot[:, 0], f_lower[:, 0], f_upper[:, 0], color="C0", alpha=0.1
         )
-        plt.plot(Xplot, y_lower, ".", color="C0", label="Y 95% confidence")
-        plt.plot(Xplot, y_upper, ".", color="C0")
+        plt.plot(Xplot, y_lower, "-", color="C0", label="Y 95% confidence")
+        plt.plot(Xplot, y_upper, "-", color="C0")
         plt.fill_between(
             Xplot[:, 0], y_lower[:, 0], y_upper[:, 0], color="C0", alpha=0.1
         )
