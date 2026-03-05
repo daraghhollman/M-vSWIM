@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any, Callable, List, Tuple
 
 import numpy as np
@@ -12,12 +14,10 @@ class GapGenerator:
         self,
         get_gap_size: Callable,
         get_gap_interval: Callable,
-        seed: int | None = None,
     ) -> None:
 
         self.get_gap_size = get_gap_size
         self.get_gap_interval = get_gap_interval
-        self.rng = np.random.default_rng(seed)
 
     def generate_gaps(self, n) -> List[Tuple[int, int]]:
         """
@@ -29,14 +29,14 @@ class GapGenerator:
 
             # We should always have data at the start, so we first move by the
             # interval, then create the gap.
-            interval = self.get_gap_interval(self.rng)
+            interval = self.get_gap_interval()
             start_index += interval
 
             # Similarly, we always want an interval sized gap at the end.
             if start_index >= n - interval:
                 break
 
-            size = self.get_gap_size(self.rng)
+            size = self.get_gap_size()
 
             # We use min as a safety check here, so we don't try to make gaps
             # longer than the length of data left. However, this should be
@@ -87,11 +87,41 @@ class GapGenerator:
         return tuple(array[mask] for array in arrays)
 
     @classmethod
-    def from_constants(
-        cls, gap_size: float, gap_interval: float, seed: int | None = None
-    ):
+    def from_constants(cls, gap_size: float, gap_interval: float) -> GapGenerator:
+        """
+        Create a gap generator with constant gap size and interval. Gaps sizes
+        and intervals are defined in index space - assuming constant data
+        spacing.
+        """
+
         return cls(
-            get_gap_size=lambda _: gap_size,
-            get_gap_interval=lambda _: gap_interval,
-            seed=seed,
+            get_gap_size=lambda: gap_size,
+            get_gap_interval=lambda: gap_interval,
+        )
+
+    @classmethod
+    def from_normal_distributions(
+        cls,
+        mean_gap_size: float,
+        gap_size_std_error: float,
+        mean_gap_interval: float,
+        gap_interval_std_error,
+    ) -> GapGenerator:
+        """
+        Create a gap generator with gap size and interval sampled from normal
+        distributions. Gaps sizes and intervals are defined in index space -
+        assuming constant data spacing.
+        """
+
+        def gap_size_normal():
+            return round(np.random.normal(loc=mean_gap_size, scale=gap_size_std_error))
+
+        def gap_interval_normal():
+            return round(
+                np.random.normal(loc=mean_gap_interval, scale=gap_interval_std_error)
+            )
+
+        return cls(
+            get_gap_size=gap_size_normal,
+            get_gap_interval=gap_interval_normal,
         )
