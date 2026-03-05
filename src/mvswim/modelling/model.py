@@ -15,8 +15,8 @@ from keras.optimizers import Optimizer
 from numpy.typing import NDArray
 from tensorflow import Tensor
 
-from vswim.constants import CARRINGTON_ROTATION
-from vswim.scalling import TimeScaler
+from mvswim.constants import CARRINGTON_ROTATION
+from mvswim.scalling import TimeScaler
 
 __all__ = [
     "GapGenerator",

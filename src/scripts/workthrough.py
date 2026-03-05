@@ -9,8 +9,8 @@ import tensorflow as tf
 from numpy.typing import NDArray
 from sunpy.time import TimeRange
 
-from vswim.data import MAGData, get_solar_orbiter_data
-from vswim.modelling import GapGenerator, SolarWindModel
+from mvswim.data import MAGData, get_solar_orbiter_data
+from mvswim.modelling import GapGenerator, SolarWindModel
 
 # Create a unique log directory for this run
 LOG_DIR = Path("./logs/" + dt.datetime.now().strftime("%Y-%m-%d--%H:%M"))

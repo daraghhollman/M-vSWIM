@@ -19,7 +19,7 @@ import spiceypy as spice
 from hermpy.net import ClientSPICE
 from matplotlib.ticker import MultipleLocator
 
-from vswim.orbit_numbers import get_orbit_number
+from mvswim.orbit_numbers import get_orbit_number
 
 DATA_DIRECTORY = Path(__file__).parent.parent.parent.parent / "data/"
 FIGURE_DIRECTORY = Path(__file__).parent.parent.parent.parent / "figures/"
