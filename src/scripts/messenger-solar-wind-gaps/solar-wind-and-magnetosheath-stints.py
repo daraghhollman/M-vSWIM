@@ -185,14 +185,14 @@ def find_solar_wind_intervals(crossings: pl.DataFrame):
 
     intervals = (
         # Filter first to only MP crossings
-        crossings.remove(pl.col("Label").str.contains("BS"))
-        .with_columns(
+        crossings.with_columns(
             pl.col("UTC").shift(-1).alias("Next UTC"),
             pl.col("Label").shift(-1).alias("Next Label"),
         )
         # Filter instead to only MP_OUTs followed by MP_INs
-        .filter((pl.col("Label") == "MP_OUT") & (pl.col("Next Label") == "MP_IN"))
-        .select(
+        .filter(
+            (pl.col("Label") == "MP_OUT") & (pl.col("Next Label") == "MP_IN")
+        ).select(
             [
                 pl.col("UTC").alias("Start Time"),
                 pl.col("Next UTC").alias("End Time"),
