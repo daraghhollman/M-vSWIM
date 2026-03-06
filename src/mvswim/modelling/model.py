@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Tuple
@@ -41,7 +43,7 @@ class SolarWindModel:
         n_inducing_points: int,
         seed: int,
         log_directory: Path,
-    ) -> "SolarWindModel":
+    ) -> SolarWindModel:
         """
         We choose to define how our model is constructed here so that the
         inital choices are fixed. Any user can override any attributes or
