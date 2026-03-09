@@ -163,6 +163,7 @@ def get_solar_orbiter_data(
                 time = cdflib.cdfepoch.to_datetime(epoch)
 
                 mag = np.array(cdf_file.varget("B_RTN"))
+                quality = cdf_file.varget("QUALITY_FLAG")
 
                 file_data = pl.DataFrame(
                     {
@@ -170,6 +171,7 @@ def get_solar_orbiter_data(
                         "Br [nT]": mag[:, 0],
                         "Bt [nT]": mag[:, 1],
                         "Bn [nT]": mag[:, 2],
+                        "Quality": quality,
                     }
                 )
                 dataframes.append(file_data)
@@ -181,6 +183,18 @@ def get_solar_orbiter_data(
                 (pl.col("UTC") >= time_range.start.to_datetime())
                 & (pl.col("UTC") < time_range.end.to_datetime())
             )
+
+            # Filter by quality.
+            # Levels 0 -> 2 are not of publication quality.
+            # https://www.cosmos.esa.int/web/soar/support-data
+            length_before = len(data)
+            data = data.filter(pl.col("Quality") > 2)
+            length_after = len(data)
+
+            if length_before != length_after:
+                print(
+                    f"Removed {length_before - length_after} timesteps with poor quality data."
+                )
 
             data = add_magnitude(data)
 
