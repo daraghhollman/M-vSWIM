@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime as dt
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Tuple
@@ -92,11 +93,25 @@ class SolarWindModel:
         task_group = MonitorTaskGroup(loss_monitor, period=3)
         monitor = Monitor(task_group)
 
+        # We can do some other logging ourselves
+        # Create training log file
+        log_file = self.log_directory / "log"
+        with open(log_file, "a") as f:
+            start_time = dt.datetime.now()
+            f.write(f"Training started at: {start_time}\n")
+
         self.optimiser.minimize(
             self.model.training_loss,
             self.model.trainable_variables,
             step_callback=monitor,
         )
+
+        with open(log_file, "a") as f:
+            end_time = dt.datetime.now()
+            f.write(f"Training finished at: {end_time}\n")
+
+        with open(log_file, "a") as f:
+            f.write(f"Total training time: {end_time - start_time}\n")
 
     def get_training_loss(self) -> Tensor:
         return self.model.training_loss()
