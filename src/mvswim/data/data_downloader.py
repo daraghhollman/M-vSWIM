@@ -114,6 +114,16 @@ def get_helios_data(time_range: TimeRange, spacecraft: int, instrument: str = "M
 
             data: pl.DataFrame = pl.concat(dataframes)
 
+            # Downcast precision from f64 to f32 to be consistent with the
+            # above spacecraft. MESSENGER's instrument recision is still
+            # far below this, so there is no scientific concern.
+            data = data.with_columns(
+                pl.col("UTC"),
+                pl.col("Br [nT]").cast(pl.Float32),
+                pl.col("Bt [nT]").cast(pl.Float32),
+                pl.col("Bn [nT]").cast(pl.Float32),
+            )
+
             # Filter data to time_range
             data = data.filter(
                 (pl.col("UTC") >= time_range.start.to_datetime())
@@ -137,7 +147,7 @@ def remove_helios_nans(data: pl.DataFrame) -> pl.DataFrame:
 
 
 def get_solar_orbiter_data(
-    time_range: TimeRange, instrument: str = "MAG"
+    time_range: TimeRange, instrument: str = "MAG", quality_limit: int = 2
 ) -> pl.DataFrame:
 
     assert time_range.start is not None
@@ -184,19 +194,21 @@ def get_solar_orbiter_data(
                 & (pl.col("UTC") < time_range.end.to_datetime())
             )
 
+            data = add_magnitude(data)
+
             # Filter by quality.
-            # Levels 0 -> 2 are not of publication quality.
+            # Levels 0 -> 1 are not of publication quality. Level 2 is 'survey
+            # data': potentially not publication quality, but we will include
+            # here.
             # https://www.cosmos.esa.int/web/soar/support-data
             length_before = len(data)
-            data = data.filter(pl.col("Quality") > 2)
+            data = data.filter(pl.col("Quality") >= quality_limit)
             length_after = len(data)
 
             if length_before != length_after:
                 print(
                     f"Removed {length_before - length_after} timesteps with poor quality data."
                 )
-
-            data = add_magnitude(data)
 
             return data
 
@@ -225,8 +237,14 @@ def get_parker_data(time_range: TimeRange, instrument: str = "MAG") -> pl.DataFr
 
                 epoch = cdf_file.varget("epoch_mag_RTN_1min")
 
+                epoch_quality_flags = cdf_file.varget("epoch_quality_flags")
+                quality_flags = cdf_file.varget("psp_fld_l2_quality_flags")
+
                 assert isinstance(epoch, np.ndarray)
+                assert isinstance(epoch_quality_flags, np.ndarray)
+
                 time = cdflib.cdfepoch.to_datetime(epoch)
+                time_quality = cdflib.cdfepoch.to_datetime(epoch_quality_flags)
 
                 mag = np.array(cdf_file.varget("psp_fld_l2_mag_RTN_1min"))
 
@@ -239,6 +257,26 @@ def get_parker_data(time_range: TimeRange, instrument: str = "MAG") -> pl.DataFr
                     }
                 )
 
+                # Quality flags don't always line up with the data. We must do
+                # a join on nearest times.
+                quality_df = pl.DataFrame(
+                    {
+                        "UTC_quality": time_quality,
+                        "Quality": quality_flags,
+                    }
+                )
+                # Join on nearest timestamp to handle off-by-one misalignments.
+                # This correctly handles cases where quality flag timestamps differ slightly.
+                file_data = file_data.join_asof(
+                    quality_df.sort("UTC_quality"),
+                    left_on="UTC",
+                    right_on="UTC_quality",
+                    strategy="nearest",
+                )
+
+                # Remove columns
+                file_data = file_data.drop(["UTC_quality"])
+
                 dataframes.append(file_data)
 
             data: pl.DataFrame = pl.concat(dataframes)
@@ -250,6 +288,17 @@ def get_parker_data(time_range: TimeRange, instrument: str = "MAG") -> pl.DataFr
             )
 
             data = add_magnitude(data)
+
+            # Exclude anything with flags for bad quality.
+            # https://cdaweb.gsfc.nasa.gov/pub/software/cdawlib/0SKELTABLES/psp_fld_l2_mag_rtn_1min_00000000_v01.skt
+            length_before = len(data)
+            data = data.filter(pl.col("Quality") == 0)
+            length_after = len(data)
+
+            if length_before != length_after:
+                print(
+                    f"Removed {length_before - length_after} timesteps with poor quality data."
+                )
 
             return data
 
