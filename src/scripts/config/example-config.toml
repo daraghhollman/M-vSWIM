@@ -1,0 +1,5 @@
+[data]
+spacecraft = ["Solar Orbiter", "Parker Solar Probe"]
+
+[kernel]
+simple_kernel = true
