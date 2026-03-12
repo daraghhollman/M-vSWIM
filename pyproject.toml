@@ -14,7 +14,7 @@ dependencies = [
     "polars>=1.38.1",
     "scikit-learn>=1.8.0",
     "scipy>=1.17.0",
-    "setuptools<81",
+    "setuptools<82",
     "sunpy>=7.1.0",
     "sunpy-soar>=1.12.0",
     "tf-keras>=2.20.1",

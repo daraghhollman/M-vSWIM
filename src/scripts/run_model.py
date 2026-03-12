@@ -16,7 +16,7 @@ import shutil
 import sys
 import tomllib
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import astropy.units as u
 import numpy as np
@@ -31,6 +31,7 @@ from sunpy.time import TimeRange
 
 from mvswim.data import get_helios_data, get_parker_data, get_solar_orbiter_data
 from mvswim.modelling import GapGenerator, SolarWindModel
+from mvswim.scalling import TimeScaler
 
 LOG_DIR = Path(__file__).parent.parent.parent / "logs"
 
@@ -47,19 +48,51 @@ def main():
         return
 
     # First fetch the required data
-    data_chunks = fetch_data(state)
+    data_chunks, chunk_labels = fetch_data(state)
 
     # Apply model to each chunk
+    metrics: None | pl.DataFrame = None
     chunk: pl.DataFrame
-    for chunk in data_chunks:
-        apply_model(chunk, state)
+    label: str
+    for i, (chunk, label) in enumerate(zip(data_chunks, chunk_labels)):
+
+        log(f"Applying model to chunk: {i+1}/{len(data_chunks)}", state)
+        chunk_metrics = apply_model(chunk, state)
+        chunk_metrics.update({"Spacecraft": label})
+
+        # Flatten our nested metrics
+        flat_metrics = {}
+        for key, value in chunk_metrics.items():
+            if isinstance(value, dict):
+                for subkey, subval in value.items():
+                    flat_metrics[f"{key} {subkey}"] = float(subval)
+            else:
+                flat_metrics[key] = value
+
+        if metrics is None:
+            metrics = pl.DataFrame(flat_metrics)
+
+        else:
+            metrics.extend(pl.DataFrame(flat_metrics))
+
+    assert isinstance(metrics, pl.DataFrame)
+
+    # Save metrics
+    metrics.write_csv(state["Log Directory"] / "performance-metrics.csv")
 
 
-def apply_model(data_chunk: pl.DataFrame, state: Dict[str, Any]) -> None:
+def apply_model(data_chunk: pl.DataFrame, state: Dict[str, Any]) -> Dict[str, Any]:
 
     # For now we will start with just using |B|.
     X: NDArray = data_chunk["UTC"].to_numpy().reshape(-1, 1)
     Y: NDArray = data_chunk["|B| [nT]"].to_numpy().reshape(-1, 1).astype("float64")
+
+    # Remove any nans
+    valid_mask = ~np.isnan(Y).squeeze()
+    X = X[valid_mask]
+    Y = Y[valid_mask]
+
+    time_scaler = TimeScaler(X)
 
     # First we need to create our artificial gaps
     # Need to consider changing this to use time differences rather than
@@ -70,21 +103,23 @@ def apply_model(data_chunk: pl.DataFrame, state: Dict[str, Any]) -> None:
 
     # Task for tomorrow! Make gap generator return both training and testing
     # data, rather than just filtering to training data.
-    X, Y = gap_generator.create_gaps(X, Y)
+    training_x, training_y, testing_x, testing_y = gap_generator.create_gaps(X, Y)
 
     # Then we're gonna apply the model, quantify performance, and produce a figure.
+    model = SolarWindModel.build(
+        input=training_x,
+        output=training_y,
+        time_scaler=time_scaler,
+        n_inducing_points=state["Config"]["model"]["inducing_points"],
+        log_directory=state["Log Directory"],
+        seed=state["Config"]["seed"],
+    )
 
-    # model = SolarWindModel.build(
-    #     input=X,
-    #     output=Y,
-    #     n_inducing_points=50,
-    #     log_directory=LOG_DIR,
-    #     seed=1785,
-    # )
-    #
-    # model.train_model()
-    #
-    # model.quicklook()
+    model.train_model()
+    performance_metrics = model.test_performance(testing_x, testing_y)
+    model.quicklook(testing_data=(testing_x, testing_y))
+
+    return performance_metrics
 
 
 def parse_config(state: Dict[str, Any]) -> Dict[str, Any] | None:
@@ -131,7 +166,7 @@ def parse_config(state: Dict[str, Any]) -> Dict[str, Any] | None:
     return state["Config"]
 
 
-def fetch_data(state: Dict[str, Any]) -> List[pl.DataFrame]:
+def fetch_data(state: Dict[str, Any]) -> Tuple[List[pl.DataFrame], List[str]]:
 
     log("Setting up spice client", state)
     spice_client = ClientSPICE()
@@ -209,6 +244,7 @@ def fetch_data(state: Dict[str, Any]) -> List[pl.DataFrame]:
     log(f"Filter parameters: {HELIOCENTRIC_DISTANCE_BOUNDS} au", state)
     log("Fetching filtered spacecraft data for:", state)
     data_chunks: List[pl.DataFrame] = []
+    data_labels: List[str] = []
     for id in state["Config"]["data"]["spacecraft"]:
 
         log(f"   {id}", state)
@@ -280,10 +316,11 @@ def fetch_data(state: Dict[str, Any]) -> List[pl.DataFrame]:
                 data_segments.append(info["get_data"](interval))
 
             data_chunks.extend(data_segments)
+            data_labels.extend([id] * len(data_segments))
 
     log("Data fetch complete", state)
 
-    return data_chunks
+    return data_chunks, data_labels
 
 
 def log(s: str, state: Dict[str, Any]) -> None:

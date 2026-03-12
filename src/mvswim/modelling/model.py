@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import datetime as dt
+import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Any, Callable, Dict, List, Tuple
 
 import astropy.units as u
 import gpflow
@@ -16,6 +17,8 @@ from gpflow.monitor import Monitor, MonitorTaskGroup, ScalarToTensorBoard
 from gpflow.optimizers import Scipy
 from keras.optimizers import Optimizer
 from numpy.typing import NDArray
+from sklearn.cluster import MiniBatchKMeans
+from sklearn.metrics import mean_absolute_error, r2_score, root_mean_squared_error
 from tensorflow import Tensor
 
 from mvswim.constants import CARRINGTON_ROTATION
@@ -41,6 +44,7 @@ class SolarWindModel:
         cls,
         input: NDArray[np.datetime64],
         output: NDArray[Any],
+        time_scaler: TimeScaler,
         n_inducing_points: int,
         seed: int,
         log_directory: Path,
@@ -56,16 +60,17 @@ class SolarWindModel:
         # Additionally, as GP models are based on distance between data, we want to use
         # small numerical values to aid in computation times. For this, we scale the
         # time between 0 and 1.
-        time_scaler = TimeScaler(input)
         X = time_scaler.time_to_numeric(input)
         Y = output
 
         kernel = _build_kernel(time_scaler)
 
-        # Currently this is a random choice, but we can do something more
-        # sophisticated such as k-means.
-        rng = np.random.default_rng(seed)
-        inducing_points = rng.choice(X, size=n_inducing_points, replace=False)
+        # Use K-Means Clustering to determine good inducing points
+        kmeans = MiniBatchKMeans(
+            n_clusters=n_inducing_points, random_state=seed, n_init="auto"
+        )
+        kmeans.fit(X)
+        inducing_points = kmeans.cluster_centers_
 
         gpmodel = SGPR((X, Y), kernel=kernel, inducing_variable=inducing_points)
 
@@ -80,6 +85,15 @@ class SolarWindModel:
             log_directory=log_directory,
         )
 
+    def log(self, s: str) -> None:
+
+        # Print the statement
+        print(s)
+
+        # Log the statement to a file
+        with open(self.log_directory / "log", "a") as f:
+            f.write(dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S  ") + s + "\n")
+
     def train_model(self) -> None:
         """
         Perform iterations of training.
@@ -93,12 +107,8 @@ class SolarWindModel:
         task_group = MonitorTaskGroup(loss_monitor, period=3)
         monitor = Monitor(task_group)
 
-        # We can do some other logging ourselves
-        # Create training log file
-        log_file = self.log_directory / "log"
-        with open(log_file, "a") as f:
-            start_time = dt.datetime.now()
-            f.write(f"Training started at: {start_time}\n")
+        start_time = dt.datetime.now()
+        self.log(f"Training started at: {start_time}")
 
         self.optimiser.minimize(
             self.model.training_loss,
@@ -106,12 +116,49 @@ class SolarWindModel:
             step_callback=monitor,
         )
 
-        with open(log_file, "a") as f:
-            end_time = dt.datetime.now()
-            f.write(f"Training finished at: {end_time}\n")
+        end_time = dt.datetime.now()
+        self.log(f"Training ended at: {end_time}")
 
-        with open(log_file, "a") as f:
-            f.write(f"Total training time: {end_time - start_time}\n")
+        self.log(f"Total training time: {end_time - start_time}")
+
+        return
+
+    def test_performance(
+        self, testing_x: NDArray, testing_y: NDArray
+    ) -> Dict[str, Dict[str, NDArray]]:
+
+        self.log(f"TESTING")
+        # We need to scale our inputs
+        testing_x = self.time_scaler.time_to_numeric(testing_x)
+
+        y_mean, _ = self.model.predict_y(testing_x)
+
+        # Define a list of metrics and labels
+        metric_labels: List[str] = ["RMSE", "MAE", "R Squared"]
+        metric_functions: List[Callable] = [
+            root_mean_squared_error,
+            mean_absolute_error,
+            r2_score,
+        ]
+
+        metrics: Dict[str, Any] = {}
+
+        label: str
+        function: Callable
+        for label, function in zip(metric_labels, metric_functions):
+
+            # Each of these are in the form: y_true, y_pred
+            metric_values = function(testing_y, y_mean)
+
+            metrics.update(
+                {label: {"Mean": np.mean(metric_values), "SD": np.std(metric_values)}}
+            )
+
+            self.log(
+                f"    {label}: {np.mean(metric_values):.3f} +/- {np.std(metric_values):.3f}"
+            )
+
+        return metrics
 
     def get_training_loss(self) -> Tensor:
         return self.model.training_loss()
@@ -122,32 +169,50 @@ class SolarWindModel:
         """
         gpflow.utilities.print_summary(self.model)
 
-    def quicklook(self) -> None:
-        Xplot = np.linspace(0, 1, 1000)[:, None]
+    def quicklook(self, testing_data: None | Tuple[NDArray, ...] = None) -> None:
+        x_range = np.linspace(0, 1, 1000)[:, None]
 
-        f_mean, f_var = self.model.predict_f(Xplot, full_cov=False)
-        y_mean, y_var = self.model.predict_y(Xplot)
+        f_mean, f_var = self.model.predict_f(x_range, full_cov=False)
+        y_mean, y_var = self.model.predict_y(x_range)
 
-        f_lower = f_mean - 1.96 * np.sqrt(f_var)
-        f_upper = f_mean + 1.96 * np.sqrt(f_var)
         y_lower = y_mean - 1.96 * np.sqrt(y_var)
         y_upper = y_mean + 1.96 * np.sqrt(y_var)
 
-        plt.scatter(*self.data, color="black", marker=".", label="input data")
-        plt.plot(Xplot, f_mean, "-", color="C0", label="mean")
-        plt.plot(Xplot, f_lower, "--", color="C0", label="f 95% confidence")
-        plt.plot(Xplot, f_upper, "--", color="C0")
-        plt.fill_between(
-            Xplot[:, 0], f_lower[:, 0], f_upper[:, 0], color="C0", alpha=0.1
-        )
-        plt.plot(Xplot, y_lower, "-", color="C0", label="Y 95% confidence")
-        plt.plot(Xplot, y_upper, "-", color="C0")
-        plt.fill_between(
-            Xplot[:, 0], y_lower[:, 0], y_upper[:, 0], color="C0", alpha=0.1
-        )
-        plt.legend()
+        _, ax = plt.subplots(figsize=(12, 8))
 
-        plt.show()
+        ax.scatter(
+            self.time_scaler.numeric_to_time(self.data[0]),
+            self.data[1],
+            color="black",
+            marker=".",
+            label="input data",
+        )
+
+        if testing_data is not None:
+            ax.scatter(
+                *testing_data, color="indianred", marker=".", label="testing data"
+            )
+
+        x_range = self.time_scaler.numeric_to_time(x_range)
+        ax.plot(x_range, f_mean, "-", color="C0", label="Prediction Mean")
+        ax.plot(x_range, y_lower, "-", color="C0", label="95% confidence")
+        ax.plot(x_range, y_upper, "-", color="C0")
+        ax.fill_between(
+            x_range[:, 0], y_lower[:, 0], y_upper[:, 0], color="C0", alpha=0.1
+        )
+        ax.legend()
+
+        fig_path = (
+            self.log_directory
+            / f"figures/training-{dt.datetime.now().strftime('%H:%M:%S')}.pdf"
+        )
+
+        # Ensure directory exits
+        os.makedirs(fig_path.parent, exist_ok=True)
+
+        self.log(f"Saving figure to {fig_path}")
+
+        plt.savefig(fig_path, format="pdf")
 
 
 def _build_kernel(time_scaler: TimeScaler) -> Kernel:

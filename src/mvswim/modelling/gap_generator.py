@@ -69,7 +69,12 @@ class GapGenerator:
         """
         Creates the gaps in the input numpy array according the generator
         constructed with. Applies aligned gaps to multiple arrays.
-        Returns tuple of masked arrays.
+
+        Returns tuple of masked arrays. Along with only the removed data.
+
+        Returns
+        -------
+        Tuple[NDArray, ...] len(arrays) * 2
         """
 
         if len(arrays) == 0:
@@ -84,7 +89,10 @@ class GapGenerator:
 
         mask = self.generate_mask(n_samples)
 
-        return tuple(array[mask] for array in arrays)
+        masked_arrays = tuple(array[mask] for array in arrays)
+        removed_arrays = tuple(array[~mask] for array in arrays)
+
+        return masked_arrays + removed_arrays
 
     @classmethod
     def from_constants(cls, gap_size: float, gap_interval: float) -> GapGenerator:

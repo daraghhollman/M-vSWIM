@@ -1066,7 +1066,7 @@ requires-dist = [
     { name = "polars", specifier = ">=1.38.1" },
     { name = "scikit-learn", specifier = ">=1.8.0" },
     { name = "scipy", specifier = ">=1.17.0" },
-    { name = "setuptools", specifier = "<81" },
+    { name = "setuptools", specifier = "<82" },
     { name = "sunpy", specifier = ">=7.1.0" },
     { name = "sunpy-soar", specifier = ">=1.12.0" },
     { name = "tf-keras", specifier = ">=2.20.1" },

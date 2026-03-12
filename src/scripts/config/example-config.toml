@@ -1,5 +1,7 @@
-[data]
-spacecraft = ["Solar Orbiter", "Parker Solar Probe"]
+seed = 1785
 
-[kernel]
-simple_kernel = true
+[data]
+spacecraft = ["Parker Solar Probe"]
+
+[model]
+inducing_points = 10
