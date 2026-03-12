@@ -113,12 +113,20 @@ class GapGenerator:
         assuming constant data spacing.
         """
 
+        # We need to clamp these at 1
         def gap_size_normal():
-            return round(np.random.normal(loc=mean_gap_size, scale=gap_size_std_error))
+            return max(
+                1, round(np.random.normal(loc=mean_gap_size, scale=gap_size_std_error))
+            )
 
         def gap_interval_normal():
-            return round(
-                np.random.normal(loc=mean_gap_interval, scale=gap_interval_std_error)
+            return max(
+                1,
+                round(
+                    np.random.normal(
+                        loc=mean_gap_interval, scale=gap_interval_std_error
+                    )
+                ),
             )
 
         return cls(
