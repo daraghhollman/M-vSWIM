@@ -1,7 +1,7 @@
 seed = 1785
 
 [data]
-spacecraft = ["Parker Solar Probe"]
+spacecraft = ["Solar Orbiter"]
 
 [model]
 inducing_points = 10

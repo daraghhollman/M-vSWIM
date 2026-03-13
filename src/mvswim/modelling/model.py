@@ -10,12 +10,22 @@ import astropy.units as u
 import gpflow
 import matplotlib.pyplot as plt
 import numpy as np
+import tensorflow as tf
 from gpflow import Parameter
-from gpflow.kernels import Kernel, Periodic, RationalQuadratic
+from gpflow.kernels import (
+    Kernel,
+    Linear,
+    Periodic,
+    RationalQuadratic,
+    SquaredExponential,
+)
 from gpflow.models import SGPR
 from gpflow.monitor import Monitor, MonitorTaskGroup, ScalarToTensorBoard
 from gpflow.optimizers import Scipy
+from gpflow.utilities import deepcopy
 from keras.optimizers import Optimizer
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from numpy.typing import NDArray
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.metrics import mean_absolute_error, r2_score, root_mean_squared_error
@@ -34,6 +44,7 @@ __all__ = [
 class SolarWindModel:
     model: SGPR
     data: Tuple[NDArray[np.datetime64], NDArray[Any]]
+    kernel: Kernel
     optimiser: Optimizer
     time_scaler: TimeScaler  # Store scaler on model for later inverse transforms
     seed: int
@@ -79,6 +90,7 @@ class SolarWindModel:
         return cls(
             model=gpmodel,
             data=(X, Y),
+            kernel=kernel,
             optimiser=opt,
             time_scaler=time_scaler,
             seed=seed,
@@ -93,6 +105,14 @@ class SolarWindModel:
         # Log the statement to a file
         with open(self.log_directory / "log", "a") as f:
             f.write(dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S  ") + s + "\n")
+
+    def visualise_kernel(self) -> None:
+        # Visualise kernel
+        fig = _plot_kernel(self.kernel)
+
+        os.makedirs(self.log_directory / "figures")
+
+        fig.savefig(self.log_directory / f"figures/kernel.pdf")
 
     def train_model(self) -> None:
         """
@@ -148,15 +168,11 @@ class SolarWindModel:
         for label, function in zip(metric_labels, metric_functions):
 
             # Each of these are in the form: y_true, y_pred
-            metric_values = function(testing_y, y_mean)
+            metric = function(testing_y, y_mean)
 
-            metrics.update(
-                {label: {"Mean": np.mean(metric_values), "SD": np.std(metric_values)}}
-            )
+            metrics.update({label: metric})
 
-            self.log(
-                f"    {label}: {np.mean(metric_values):.3f} +/- {np.std(metric_values):.3f}"
-            )
+            self.log(f"    {label}: {metric}")
 
         return metrics
 
@@ -220,6 +236,14 @@ def _build_kernel(time_scaler: TimeScaler) -> Kernel:
     Constructs the solar wind kernel with physically-meaningful initial
     parameter values expressed in scaled time units.
     """
+
+    # We want something to capture the short scale variation, and something to
+    # capture the large scale.
+    short_scale_variation = RationalQuadratic(lengthscales=0.1)
+    long_scale_variation = RationalQuadratic(lengthscales=1)
+
+    trend = Linear()
+
     # We expect a periodic component with period roughly equal to the time it
     # takes for the same part of the sun to be subsolar to Mercury again - note
     # that this is slightly longer than a solar rotation.
@@ -228,11 +252,63 @@ def _build_kernel(time_scaler: TimeScaler) -> Kernel:
     scaled_period = time_scaler.scale_duration(CARRINGTON_ROTATION.to(u.second).value)
 
     periodic_component = Periodic(
-        base_kernel=RationalQuadratic(),
-        period=Parameter(scaled_period, trainable=True),
+        base_kernel=SquaredExponential(),
+        period=Parameter(scaled_period, trainable=False),
     )
 
-    # We will capture the general shape with a rational quadratic
-    trend = RationalQuadratic()
+    composite_kernel = (
+        trend + short_scale_variation + long_scale_variation + periodic_component
+    )
 
-    return trend + RationalQuadratic() * periodic_component
+    return composite_kernel
+
+
+# Some useful functions to aid in the visualisation of kernels
+def _plot_kernel_samples(ax: Axes, kernel: gpflow.kernels.Kernel) -> None:
+    X = np.zeros((0, 1))
+    Y = np.zeros((0, 1))
+    model = gpflow.models.GPR((X, Y), kernel=deepcopy(kernel))
+    Xplot = np.linspace(-0.6, 0.6, 100)[:, None]
+    tf.random.set_seed(20220903)
+    n_samples = 3
+    # predict_f_samples draws n_samples examples of the function f, and returns their values at Xplot.
+    fs = model.predict_f_samples(Xplot, n_samples)
+    ax.plot(Xplot, fs[:, :, 0].numpy().T, label=kernel.__class__.__name__)
+    ax.set_ylim(bottom=-2.0, top=2.0)
+    ax.set_title("Example $f$s")
+
+
+def _plot_kernel_prediction(
+    ax: Axes, kernel: gpflow.kernels.Kernel, *, optimise: bool = True
+) -> None:
+    X = np.array([[-0.5], [0.0], [0.4], [0.5]])
+    Y = np.array([[1.0], [0.0], [0.6], [0.4]])
+    model = gpflow.models.GPR((X, Y), kernel=deepcopy(kernel), noise_variance=1e-3)
+
+    if optimise:
+        gpflow.set_trainable(model.likelihood, False)
+        opt = gpflow.optimizers.Scipy()
+        opt.minimize(model.training_loss, model.trainable_variables)
+
+    Xplot = np.linspace(-0.6, 0.6, 100)[:, None]
+
+    f_mean, f_var = model.predict_f(Xplot, full_cov=False)
+    f_lower = f_mean - 1.96 * np.sqrt(f_var)
+    f_upper = f_mean + 1.96 * np.sqrt(f_var)
+
+    ax.scatter(X, Y, color="black")
+    (mean_line,) = ax.plot(Xplot, f_mean, "-", label=kernel.__class__.__name__)
+    color = mean_line.get_color()
+    ax.plot(Xplot, f_lower, lw=0.1, color=color)
+    ax.plot(Xplot, f_upper, lw=0.1, color=color)
+    ax.fill_between(Xplot[:, 0], f_lower[:, 0], f_upper[:, 0], color=color, alpha=0.1)
+    ax.set_ylim(bottom=-1.0, top=2.0)
+    ax.set_title("Example data fit")
+
+
+def _plot_kernel(kernel: gpflow.kernels.Kernel, *, optimise: bool = True) -> Figure:
+    fig, (samples_ax, prediction_ax) = plt.subplots(nrows=1, ncols=2)
+    _plot_kernel_samples(samples_ax, kernel)
+    _plot_kernel_prediction(prediction_ax, kernel, optimise=optimise)
+
+    return fig
