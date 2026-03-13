@@ -10,6 +10,7 @@ import astropy.units as u
 import gpflow
 import matplotlib.pyplot as plt
 import numpy as np
+import polars as pl
 import tensorflow as tf
 from gpflow import Parameter
 from gpflow.kernels import (
@@ -36,6 +37,7 @@ from mvswim.scalling import TimeScaler
 
 __all__ = [
     "SolarWindModel",
+    "plot_from_training_data",
 ]
 
 
@@ -188,7 +190,6 @@ class SolarWindModel:
     def quicklook(self, testing_data: None | Tuple[NDArray, ...] = None) -> None:
         x_range = np.linspace(0, 1, 1000)[:, None]
 
-        f_mean, f_var = self.model.predict_f(x_range, full_cov=False)
         y_mean, y_var = self.model.predict_y(x_range)
 
         y_lower = y_mean - 1.96 * np.sqrt(y_var)
@@ -210,7 +211,7 @@ class SolarWindModel:
             )
 
         x_range = self.time_scaler.numeric_to_time(x_range)
-        ax.plot(x_range, f_mean, "-", color="C0", label="Prediction Mean")
+        ax.plot(x_range, y_mean, "-", color="C0", label="Prediction Mean")
         ax.plot(x_range, y_lower, "-", color="C0", label="95% confidence")
         ax.plot(x_range, y_upper, "-", color="C0")
         ax.fill_between(
@@ -229,6 +230,76 @@ class SolarWindModel:
         self.log(f"Saving figure to {fig_path}")
 
         plt.savefig(fig_path, format="pdf")
+
+        # We also want to save the data used to create the plot, so it can be
+        # investigated deeper.
+        if testing_data is not None:
+
+            data_path = (
+                self.log_directory
+                / f"data/training-{dt.datetime.now().strftime('%H:%M:%S')}.npz"
+            )
+            os.makedirs(data_path.parent, exist_ok=True)
+            self.log(f"Writing figure data to {data_path}")
+
+            np.savez(
+                data_path,
+                x_train=self.time_scaler.numeric_to_time(self.data[0]).squeeze(),
+                y_train=self.data[1],
+                x_test=testing_data[0],
+                y_test=testing_data[1],
+                x_range=x_range,
+                y_mean=y_mean,
+                y_upper=y_upper,
+                y_lower=y_lower,
+            )
+
+
+def plot_from_training_data(data_path: Path) -> Tuple[Figure, Axes]:
+    """
+    Our model generates quicklook plots when training. These are nice for a
+    quicklook, but we also save the data with the logs to look more closely.
+    This function takes those data files as input, and creates a matplotlib
+    plot to view them.
+    """
+
+    loaded_data = np.load(data_path)
+
+    data = {}
+    for key in loaded_data:
+        data[key] = loaded_data[key].squeeze()
+
+    fig, ax = plt.subplots(figsize=(12, 8))
+
+    ax.scatter(
+        data["x_train"],
+        data["y_train"],
+        color="black",
+        marker=".",
+        label="Training Data",
+    )
+
+    ax.scatter(
+        data["x_test"],
+        data["y_test"],
+        color="indianred",
+        marker=".",
+        label="Testing Data",
+    )
+
+    ax.plot(data["x_range"], data["y_mean"], "-", color="C0", label="Prediction Mean")
+    ax.plot(data["x_range"], data["y_upper"], "-", color="C0", label="95% confidence")
+    ax.plot(data["x_range"], data["y_lower"], "-", color="C0")
+    ax.fill_between(
+        data["x_range"],
+        data["y_lower"].squeeze(),
+        data["y_upper"].squeeze(),
+        color="C0",
+        alpha=0.1,
+    )
+    ax.legend()
+
+    return fig, ax
 
 
 def _build_kernel(time_scaler: TimeScaler) -> Kernel:
