@@ -140,7 +140,7 @@ def parse_config(state: Dict[str, Any]) -> Dict[str, Any] | None:
     # current time.
     state_log_dir = (
         LOG_DIR
-        / f"{Path(sys.argv[1]).name.split('.')[0]}--{dt.datetime.now().strftime('%Y-%m-%d--%H:%M:%S')}"
+        / f"{dt.datetime.now().strftime('%Y-%m-%d--%H:%M:%S')}--{Path(sys.argv[1]).name.split('.')[0]}"
     )
     os.makedirs(state_log_dir, exist_ok=True)
     state["Log Directory"] = state_log_dir
