@@ -153,7 +153,11 @@ class SolarWindModel:
         # We need to scale our inputs
         testing_x = self.time_scaler.time_to_numeric(testing_x)
 
+        # Get model predictions for this time range
         y_mean, _ = self.model.predict_y(testing_x)
+
+        # Get linear interpolation for this time range
+        linear_y = _interpolate_continuous_chunks(testing_x, testing_y)
 
         # Define a list of metrics and labels
         metric_labels: List[str] = ["RMSE", "MAE", "R Squared"]
@@ -163,7 +167,8 @@ class SolarWindModel:
             r2_score,
         ]
 
-        metrics: Dict[str, Any] = {}
+        model_metrics: Dict[str, Any] = {}
+        linear_metrics: Dict[str, Any] = {}
 
         label: str
         function: Callable
@@ -171,12 +176,14 @@ class SolarWindModel:
 
             # Each of these are in the form: y_true, y_pred
             metric = function(testing_y, y_mean)
+            model_metrics.update({label: metric})
+            self.log(f"    Model {label}: {metric}")
 
-            metrics.update({label: metric})
+            metric = function(testing_y, linear_y)
+            linear_metrics.update({label: metric})
+            self.log(f"    LI {label}: {metric}")
 
-            self.log(f"    {label}: {metric}")
-
-        return metrics
+        return {"Model": model_metrics, "Linear Interpolation": linear_metrics}
 
     def get_training_loss(self) -> Tensor:
         return self.model.training_loss()
@@ -208,6 +215,18 @@ class SolarWindModel:
         if testing_data is not None:
             ax.scatter(
                 *testing_data, color="indianred", marker=".", label="testing data"
+            )
+
+            linear_y = _interpolate_continuous_chunks(
+                self.time_scaler.time_to_numeric(testing_data[0]), testing_data[1]
+            )
+
+            ax.scatter(
+                testing_data[0],
+                linear_y,
+                color="cornflowerblue",
+                label="Linear Interpolation",
+                marker=".",
             )
 
         x_range = self.time_scaler.numeric_to_time(x_range)
@@ -252,6 +271,7 @@ class SolarWindModel:
                 y_mean=y_mean,
                 y_upper=y_upper,
                 y_lower=y_lower,
+                linear_interpolation=linear_y,
             )
 
 
@@ -285,6 +305,14 @@ def plot_from_training_data(data_path: Path) -> Tuple[Figure, Axes]:
         color="indianred",
         marker=".",
         label="Testing Data",
+    )
+
+    ax.scatter(
+        data["x_test"],
+        data["linear_interpolation"],
+        color="cornflowerblue",
+        label="Linear Interpolation",
+        marker=".",
     )
 
     ax.plot(data["x_range"], data["y_mean"], "-", color="C0", label="Prediction Mean")
@@ -332,6 +360,53 @@ def _build_kernel(time_scaler: TimeScaler) -> Kernel:
     )
 
     return composite_kernel
+
+
+def _interpolate_continuous_chunks(
+    x: NDArray, y: NDArray, gap_threshold: float | None = None
+) -> NDArray:
+    """Linear interpolation that respects gaps in the data.
+
+    Identifies continuous chunks and interpolates within each,
+    rather than bridging across gaps.
+
+    Args:
+        x: Scaled time values
+        y: Target values
+        gap_threshold: Minimum gap size to treat as a discontinuity.
+                       Defaults to 2x the median step size.
+    """
+
+    x = x.squeeze()
+    y = y.squeeze()
+
+    if gap_threshold is None:
+        gaps = np.diff(x)
+        gap_threshold = 2 * np.median(gaps)
+
+    # Find indices where a new chunk begins
+    split_indices = np.where(np.diff(x) > gap_threshold)[0] + 1
+    x_chunks = np.split(x, split_indices)
+    y_chunks = np.split(y, split_indices)
+
+    linear_y = np.empty_like(y, dtype=float)
+    start = 0
+    for x_chunk, y_chunk in zip(x_chunks, y_chunks):
+
+        end = start + len(x_chunk)
+
+        if len(x_chunk) == 1:
+            # Single point chunk — no interpolation possible, use value directly
+            linear_y[start:end] = y_chunk
+
+        else:
+            linear_y[start:end] = np.interp(
+                x_chunk, [x_chunk[0], x_chunk[-1]], [y_chunk[0], y_chunk[-1]]
+            )
+
+        start = end
+
+    return linear_y
 
 
 # Some useful functions to aid in the visualisation of kernels
