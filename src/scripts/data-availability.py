@@ -27,11 +27,11 @@ from mvswim.data import get_helios_data, get_parker_data, get_solar_orbiter_data
 
 # Define the critera with which we look within
 HELIOCENTRIC_DISTANCE_BOUNDS = (0.3, 0.5)  # au
+LATITUDE_BOUND = 5  # deg
 TRAJECTORY_RESOLUTION = dt.timedelta(days=1)
 
 DATA_DIRECTORY = Path(__file__).parent.parent.parent / "data/"
 FIGURE_DIRECTORY = Path(__file__).parent.parent.parent / "figures/"
-LOG_DIR = Path("./logs/" + dt.datetime.now().strftime("%Y-%m-%d--%H:%M"))
 
 
 def main():
@@ -83,24 +83,28 @@ def main():
             "Time Range": (dt.datetime(2018, 8, 13), dt.datetime(2025, 11, 1)),
             "Product Name": "mag-rtn-normal-1-minute",
             "get_data": get_parker_data,
+            "Bin Size [sec]": 60,
         },
         "Solar Orbiter": {
             "ID": "Solar Orbiter",
             "Time Range": (dt.datetime(2020, 2, 11), dt.datetime(2026, 1, 1)),
             "Product Name": "psp-fld-l2-mag-rtn-1min",
             "get_data": get_solar_orbiter_data,
+            "Bin Size [sec]": 60,
         },
         "Helios 1": {
             "ID": "Helios 1",
             "Time Range": (dt.datetime(1974, 12, 11), dt.datetime(1985, 9, 5)),
             "Product Name": "helios1_40sec_mag_plasma",
             "get_data": get_helios1_data,
+            "Bin Size [sec]": 40,
         },
         "Helios 2": {
             "ID": "Helios 2",
             "Time Range": (dt.datetime(1976, 1, 16), dt.datetime(1980, 3, 9)),
             "Product Name": "helios2_40sec_mag_plasma",
             "get_data": get_helios2_data,
+            "Bin Size [sec]": 40,
         },
     }
 
@@ -161,6 +165,13 @@ def main():
                     & (pl.col("Radius [au]") <= HELIOCENTRIC_DISTANCE_BOUNDS[1])
                 )
 
+                # Filter by latitude
+                positions_table = positions_table.filter(
+                    np.abs(pl.col("Latitude [deg]")) <= LATITUDE_BOUND
+                )
+
+                print(positions_table)
+
                 # Next we download data for the times where we have positions
                 # First lets find all the jumps in time greater than the time resolution
                 positions_table = positions_table.with_columns(
@@ -184,37 +195,16 @@ def main():
                 data_segments: List[pl.DataFrame] = []
                 for interval in data_intervals:
 
+                    # Catch edge case where interval is of duration 0
+                    # ( Only happens for Helios 2 )
+                    if interval.start == interval.end:
+                        continue
+
                     # Get data for each interval
+                    print(interval)
                     data_segments.append(info["get_data"](interval))
 
                 info["Data Segments"] = data_segments
-
-                # plt.scatter(
-                #     spacecraft_data["UTC"],
-                #     spacecraft_data["|B| [nT]"],
-                #     color="black",
-                #     marker=".",
-                # )
-                # plt.show()
-
-                # spacecraft_data = spacecraft_data.drop_nans()
-                #
-                # X: NDArray = spacecraft_data["UTC"].to_numpy().reshape(-1, 1)
-                # Y: NDArray = (
-                #     spacecraft_data["|B| [nT]"].to_numpy().reshape(-1, 1).astype("float64")
-                # )
-                #
-                # model = SolarWindModel.build(
-                #     input=X,
-                #     output=Y,
-                #     n_inducing_points=50,
-                #     log_directory=LOG_DIR,
-                #     seed=1785,
-                # )
-                #
-                # model.train_model()
-                #
-                # model.quicklook()
 
                 # Cache data
                 with open(figure_data_paths[i], "wb") as f:
@@ -233,7 +223,11 @@ def main():
     )
     axes: List[Axes] = axes_grid.flatten()
 
-    fig.suptitle(r"$0.3 \,\rm{AU} \leq R_H \leq 0.5 \,\rm{AU}$")
+    fig.suptitle(
+        r"$0.3 \,\rm{AU} \leq R_H \leq 0.5 \,\rm{AU}$"
+        + "\n"
+        + r"$|\rm{Lat.}| \leq 5 ^\circ $"
+    )
 
     # First make plots of data availability in time
     helios_ax = axes[0]  # Helios 1, 2
@@ -283,25 +277,14 @@ def main():
     helios_ax.tick_params(top=True, labeltop=True, bottom=False, labelbottom=False)
     modern_ax.tick_params(top=True, labeltop=True, bottom=False, labelbottom=False)
 
+    modern_ax.yaxis.set_label_position("right")
+    modern_ax.yaxis.tick_right()
+
     # Then make histograms describing those data
     for i, (name, info) in enumerate(spacecraft_info.items()):
 
         time_ax = axes[2 * i + 2]
         mag_ax = axes[2 * i + 3]
-
-        # Make a transform to allow us to place our titles easily
-        title_transform = matplotlib.transforms.blended_transform_factory(
-            fig.transFigure,
-            time_ax.transAxes,
-        )
-
-        time_ax.text(
-            0.5,
-            1.1,
-            f"{name}\n" + f"({info["Product Name"]})",
-            ha="center",
-            transform=title_transform,
-        )
 
         # Looping through each data segment, we want to find the following:
         #   - Time differences
@@ -331,7 +314,7 @@ def main():
             bt.extend(data_segment["Bt [nT]"])
             bn.extend(data_segment["Bn [nT]"])
 
-        time_bin_size = 1  # minutes
+        time_bin_size = info["Bin Size [sec]"] / 60
         time_bins = np.arange(0, max(time_differences) + time_bin_size, time_bin_size)
         time_ax.hist(time_differences.to_list(), color="black", bins=time_bins.tolist())
 
@@ -339,7 +322,9 @@ def main():
         # time_ax.set_ylim(0.8, 50)
         time_ax.set_yscale("log")
 
-        time_ax.set_ylabel("N Timesteps")
+        time_ax.set_ylabel(
+            f"{name}\n" + f"({info["Product Name"]})" + "\n\nN Measurements"
+        )
 
         mag_components = [b_total, br, bt, bn]
 
@@ -364,11 +349,13 @@ def main():
         mag_ax.set_ylabel("Normalised Occurence")
         mag_ax.legend()
         mag_ax.margins(x=0)
+        mag_ax.yaxis.set_label_position("right")
+        mag_ax.yaxis.tick_right()
 
-    axes[-2].set_xlabel("Timestep Length [Minutes]")
+    axes[-2].set_xlabel("$\Delta t$ [Minutes]")
     axes[-1].set_xlabel("[nT]")
 
-    fig.subplots_adjust(top=0.9, bottom=0.05, hspace=0.5, wspace=0.3)
+    fig.subplots_adjust(top=0.9, bottom=0.05, hspace=0.2, wspace=0.1)
 
     plt.savefig(FIGURE_DIRECTORY / "data-availability.pdf", format="pdf")
 
