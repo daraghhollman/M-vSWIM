@@ -10,8 +10,9 @@ import astropy.units as u
 import gpflow
 import matplotlib.pyplot as plt
 import numpy as np
-import polars as pl
+import psutil
 import tensorflow as tf
+import tensorflow.summary
 from gpflow import Parameter
 from gpflow.kernels import (
     Kernel,
@@ -21,7 +22,12 @@ from gpflow.kernels import (
     SquaredExponential,
 )
 from gpflow.models import SGPR
-from gpflow.monitor import Monitor, MonitorTaskGroup, ScalarToTensorBoard
+from gpflow.monitor import (
+    ModelToTensorBoard,
+    Monitor,
+    MonitorTaskGroup,
+    ScalarToTensorBoard,
+)
 from gpflow.optimizers import Scipy
 from gpflow.utilities import deepcopy
 from keras.optimizers import Optimizer
@@ -121,12 +127,39 @@ class SolarWindModel:
         Perform iterations of training.
         """
 
-        loss_monitor = ScalarToTensorBoard(
-            str(self.log_directory / "training-loss"),
-            self.get_training_loss,
-            "Training Loss",
+        training_log_dir = str(
+            self.log_directory / f"{dt.datetime.now().strftime('%Y-%m-%d-%H:%M:%S')}"
         )
-        task_group = MonitorTaskGroup(loss_monitor, period=3)
+
+        # Log system metrics
+        cpu_monitor = ScalarToTensorBoard(
+            training_log_dir,
+            lambda: get_system_metrics()["cpu-usage"],
+            "system/CPU Usage",
+        )
+
+        memory_monitor = ScalarToTensorBoard(
+            training_log_dir,
+            lambda: get_system_metrics()["ram-usage"],
+            "system/RAM Usage",
+        )
+
+        # Log training loss
+        loss_monitor = ScalarToTensorBoard(
+            training_log_dir,
+            self.get_training_loss,
+            "training/Loss",
+        )
+
+        # Log model
+        model_monitor = ModelToTensorBoard(
+            training_log_dir,
+            self.model,
+        )
+
+        task_group = MonitorTaskGroup(
+            (cpu_monitor, memory_monitor, loss_monitor, model_monitor), period=3
+        )
         monitor = Monitor(task_group)
 
         start_time = dt.datetime.now()
@@ -407,6 +440,14 @@ def _interpolate_continuous_chunks(
         start = end
 
     return linear_y
+
+
+def get_system_metrics():
+    return {
+        "cpu-usage": psutil.cpu_percent(),
+        "ram-usage": psutil.virtual_memory().percent,
+        "vram-usage": psutil.virtual_memory().percent,
+    }
 
 
 # Some useful functions to aid in the visualisation of kernels
