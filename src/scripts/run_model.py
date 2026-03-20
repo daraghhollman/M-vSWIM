@@ -11,6 +11,7 @@ with quicklook plots, and other useful outputs.
 """
 
 import datetime as dt
+import importlib.util
 import os
 import shutil
 import sys
@@ -95,14 +96,8 @@ def apply_model(data_chunk: pl.DataFrame, state: Dict[str, Any]) -> Dict[str, An
     time_scaler = TimeScaler(X)
 
     # First we need to create our artificial gaps
-    # Need to consider changing this to use time differences rather than
-    # indexing, but for now this works with SolO and PSP as they have regular
-    # data.
-    # 2 hour gaps, at a 4 hour interval, with standard deviations of 30 minutes.
-    gap_generator = GapGenerator.from_normal_distributions(2 * 60, 30, 4 * 60, 30)
+    gap_generator = state["Config"]["Model"]["Gap Generator"]
 
-    # Task for tomorrow! Make gap generator return both training and testing
-    # data, rather than just filtering to training data.
     training_x, training_y, testing_x, testing_y = gap_generator.create_gaps(X, Y)
 
     # Then we're gonna apply the model, quantify performance, and produce a figure.
@@ -110,9 +105,9 @@ def apply_model(data_chunk: pl.DataFrame, state: Dict[str, Any]) -> Dict[str, An
         input=training_x,
         output=training_y,
         time_scaler=time_scaler,
-        n_inducing_points=state["Config"]["model"]["inducing_points"],
+        n_inducing_points=state["Config"]["Model"]["Inducing Points"],
         log_directory=state["Log Directory"],
-        seed=state["Config"]["seed"],
+        seed=state["Config"]["Seed"],
     )
 
     model.train_model()
@@ -130,18 +125,36 @@ def parse_config(state: Dict[str, Any]) -> Dict[str, Any] | None:
         print("Incorrect syntax. A config file must be provided.")
         print("")
         print("Usage:")
-        print("python ./src/scripts/run_model.py <config-file.toml>")
+        print("python ./src/scripts/run_model.py <config.py>")
+        print("")
+        print("See ./src/scripts/config/ for examples.")
         return None
 
-    with open(sys.argv[1], "rb") as f:
-        state["Config"] = tomllib.load(f)
+    # Import the config dict from file
+    spec = importlib.util.spec_from_file_location("config", sys.argv[1])
+
+    assert spec is not None
+    assert spec.loader is not None
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    state["Config"] = module.CONFIG
 
     # Create a logfile corresponding to the filename of the config file and the
     # current time.
-    state_log_dir = (
-        LOG_DIR
-        / f"{dt.datetime.now().strftime('%Y-%m-%d--%H:%M:%S')}--{Path(sys.argv[1]).name.split('.')[0]}"
-    )
+    try:
+        state_log_dir = (
+            state["Config"]["Log Directory"]
+            / f"{dt.datetime.now().strftime('%Y-%m-%d--%H:%M:%S')}--{Path(sys.argv[1]).name.split('.')[0]}"
+        )
+
+    except KeyError:
+        state_log_dir = (
+            LOG_DIR
+            / f"{dt.datetime.now().strftime('%Y-%m-%d--%H:%M:%S')}--{Path(sys.argv[1]).name.split('.')[0]}"
+        )
+
     os.makedirs(state_log_dir, exist_ok=True)
     state["Log Directory"] = state_log_dir
     state["Log File"] = state["Log Directory"] / "log"
@@ -155,7 +168,7 @@ def parse_config(state: Dict[str, Any]) -> Dict[str, Any] | None:
     spacecraft_options = set(
         ["Solar Orbiter", "Parker Solar Probe", "Helios 1", "Helios 2"]
     )
-    for id in state["Config"]["data"]["spacecraft"]:
+    for id in state["Config"]["Data"]["Spacecraft"]:
         if id not in spacecraft_options:
             log(f"Config Error: Invalid input in data.spacecraft: {id}", state)
             log(f"Available options are: {spacecraft_options}", state)
@@ -245,7 +258,7 @@ def fetch_data(state: Dict[str, Any]) -> Tuple[List[pl.DataFrame], List[str]]:
     log("Fetching filtered spacecraft data for:", state)
     data_chunks: List[pl.DataFrame] = []
     data_labels: List[str] = []
-    for id in state["Config"]["data"]["spacecraft"]:
+    for id in state["Config"]["Data"]["Spacecraft"]:
 
         log(f"   {id}", state)
 
