@@ -127,7 +127,7 @@ def apply_model(data_chunk: pl.DataFrame, state: Dict[str, Any]) -> Dict[str, An
         seed=state["Config"]["Seed"],
     )
 
-    model.train_model()
+    model.train_model(log_gpu=state["GPU"])
     performance_metrics = model.test_performance(testing_x, testing_y)
     model.quicklook(testing_data=(testing_x, testing_y))
 
