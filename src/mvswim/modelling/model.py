@@ -11,6 +11,7 @@ import gpflow
 import matplotlib.pyplot as plt
 import numpy as np
 import psutil
+import pynvml
 import tensorflow as tf
 import tensorflow.summary
 from gpflow import Parameter
@@ -122,7 +123,7 @@ class SolarWindModel:
 
         fig.savefig(self.log_directory / f"figures/kernel.pdf")
 
-    def train_model(self) -> None:
+    def train_model(self, log_gpu: bool = False) -> None:
         """
         Perform iterations of training.
         """
@@ -131,18 +132,40 @@ class SolarWindModel:
             self.log_directory / f"{dt.datetime.now().strftime('%Y-%m-%d-%H:%M:%S')}"
         )
 
+        monitors = []
+
         # Log system metrics
         cpu_monitor = ScalarToTensorBoard(
             training_log_dir,
             lambda: get_system_metrics()["cpu-usage"],
             "system/CPU Usage",
         )
+        monitors.append(cpu_monitor)
 
         memory_monitor = ScalarToTensorBoard(
             training_log_dir,
             lambda: get_system_metrics()["ram-usage"],
             "system/RAM Usage",
         )
+        monitors.append(memory_monitor)
+
+        if log_gpu:
+            vram_monitor = ScalarToTensorBoard(
+                training_log_dir,
+                lambda: get_gpu_metrics()["vram-usage"],
+                "system/VRAM Usage",
+            )
+            power_monitor = ScalarToTensorBoard(
+                training_log_dir,
+                lambda: get_gpu_metrics()["power-usage"],
+                "system/Power Consumption [W]",
+            )
+            gpu_monitor = ScalarToTensorBoard(
+                training_log_dir,
+                lambda: get_gpu_metrics()["gpu-usage"],
+                "system/GPU Usage",
+            )
+            monitors.extend([gpu_monitor, vram_monitor, power_monitor])
 
         # Log training loss
         loss_monitor = ScalarToTensorBoard(
@@ -150,16 +173,16 @@ class SolarWindModel:
             self.get_training_loss,
             "training/Loss",
         )
+        monitors.append(loss_monitor)
 
         # Log model
         model_monitor = ModelToTensorBoard(
             training_log_dir,
             self.model,
         )
+        monitors.append(model_monitor)
 
-        task_group = MonitorTaskGroup(
-            (cpu_monitor, memory_monitor, loss_monitor, model_monitor), period=3
-        )
+        task_group = MonitorTaskGroup(monitors, period=3)
         monitor = Monitor(task_group)
 
         start_time = dt.datetime.now()
@@ -446,7 +469,19 @@ def get_system_metrics():
     return {
         "cpu-usage": psutil.cpu_percent(),
         "ram-usage": psutil.virtual_memory().percent,
-        "vram-usage": psutil.virtual_memory().percent,
+    }
+
+
+def get_gpu_metrics():
+
+    # Fetch the first gpu
+    handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+    memory = pynvml.nvmlDeviceGetMemoryInfo(handle)
+
+    return {
+        "gpu-usage": pynvml.nvmlDeviceGetUtilizationRates(handle).gpu,  # %
+        "power-usage": pynvml.nvmlDeviceGetPowerUsage(handle) / 1000,  # W
+        "vram-usage": memory.used,
     }
 
 

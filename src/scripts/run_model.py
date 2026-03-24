@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Tuple
 import astropy.units as u
 import numpy as np
 import polars as pl
+import pynvml
 import spiceypy as spice
 from astropy.coordinates import CartesianRepresentation, SkyCoord
 from astropy.units import Quantity
@@ -40,6 +41,19 @@ LOG_DIR = Path(__file__).parent.parent.parent / "logs"
 def main():
 
     state: Dict[str, Any] = {}
+
+    # Check for gpu
+    try:
+        pynvml.nvmlInit()
+        device_count = pynvml.nvmlDeviceGetCount()
+        print(f"Found {device_count} GPU devices")
+
+        state["GPU"] = True
+
+    except pynvml.NVMLError as e:
+        print(f"No NVIDIA GPU detected: {e}")
+
+        state["GPU"] = False
 
     # Start by checking that the config is correct, and
     # parsing the needed elements.
@@ -80,6 +94,9 @@ def main():
 
     # Save metrics
     metrics.write_csv(state["Log Directory"] / "performance-metrics.csv")
+
+    # Cleanup
+    pynvml.nvmlShutdown()
 
 
 def apply_model(data_chunk: pl.DataFrame, state: Dict[str, Any]) -> Dict[str, Any]:
