@@ -11,14 +11,15 @@ dependencies = [
     "gpflow>=2.5.2",
     "hermpy",
     "numpy>=2.4.1",
+    "nvidia-ml-py>=13.595.45",
     "polars>=1.38.1",
     "psutil>=7.2.2",
-    "pynvml>=13.0.1",
     "scikit-learn>=1.8.0",
     "scipy>=1.17.0",
     "setuptools<82",
     "sunpy>=7.1.0",
     "sunpy-soar>=1.12.0",
+    "tensorflow[and-cuda]>=2.20.0",
     "tf-keras>=2.20.1",
 ]
 
