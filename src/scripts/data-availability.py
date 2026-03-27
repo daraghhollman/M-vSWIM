@@ -221,6 +221,9 @@ def main():
             with open(figure_data_paths[i], "rb") as f:
                 spacecraft_info[key]["Data Segments"] = pickle.load(f)
 
+    # Pass the information to another function to create a table.
+    # create_table(spacecraft_info)
+
     fig, axes_grid = plt.subplots(
         len(spacecraft_info) + 1,
         2,
@@ -419,6 +422,31 @@ def insert_time_gaps(
     y_out.extend(y[start:])
 
     return np.array(times_out), np.array(y_out)
+
+
+def create_table(spacecraft_info: Dict[str, Any]):
+
+    table_data: Dict[str, float] = {}
+
+    metric_names = ["Mean", "Median", "SD"]
+    metric_functions = [
+        functools.partial(np.nanmean, dtype=np.float64),
+        np.nanmedian,
+        np.nanstd,
+    ]
+    components = ["|B| [nT]", "Br [nT]", "Bt [nT]", "Bn [nT]"]
+
+    # We make a sub-table for each spacecraft
+    for name, info in spacecraft_info.items():
+
+        data: pl.DataFrame = pl.concat(info["Data Segments"])
+
+        for metric, func in zip(metric_names, metric_functions):
+            for component in components:
+
+                table_data[f"{metric} {component}"] = func(
+                    data[component].cast(pl.Float64).to_numpy()
+                )
 
 
 if __name__ == "__main__":
