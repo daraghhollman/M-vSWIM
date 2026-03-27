@@ -5,6 +5,7 @@ and if not, implement some kind of catch for this when we run the model.
 """
 
 import datetime as dt
+import functools
 from typing import Any, Dict, List, Tuple
 
 import astropy.units as u
@@ -97,36 +98,46 @@ def fetch_data(state: Dict[str, Any]) -> Tuple[List[pl.DataFrame], List[str]]:
         }
     )
 
-    def get_helios1_data(*args):
-        return get_helios_data(*args, spacecraft=1)
+    def get_helios1_data(*args, **kwargs):
+        return get_helios_data(*args, **kwargs, spacecraft=1)
 
-    def get_helios2_data(*args):
-        return get_helios_data(*args, spacecraft=2)
+    def get_helios2_data(*args, **kwargs):
+        return get_helios_data(*args, **kwargs, spacecraft=2)
 
     spacecraft_info: Dict[str, Dict[str, Any]] = {
         "Parker Solar Probe": {
             "ID": "Parker Solar Probe",
             "Time Range": (dt.datetime(2018, 8, 13), dt.datetime(2025, 11, 1)),
-            "Product Name": "mag-rtn-normal-1-minute",
-            "get_data": get_parker_data,
+            "Product Name": "psp-fld-l2-mag-rtn-1min",
+            "get_data": functools.partial(
+                get_parker_data, product="psp-fld-l2-mag-rtn-1min"
+            ),
+            "Bin Size [sec]": 60,
         },
         "Solar Orbiter": {
             "ID": "Solar Orbiter",
             "Time Range": (dt.datetime(2020, 2, 11), dt.datetime(2026, 1, 1)),
-            "Product Name": "psp-fld-l2-mag-rtn-1min",
-            "get_data": get_solar_orbiter_data,
+            "Product Name": "mag-rtn-normal-1-minute",
+            "get_data": functools.partial(
+                get_solar_orbiter_data,
+                product="mag-rtn-normal-1-minute",
+                quality_limit=2,
+            ),
+            "Bin Size [sec]": 60,
         },
         "Helios 1": {
             "ID": "Helios 1",
             "Time Range": (dt.datetime(1974, 12, 11), dt.datetime(1985, 9, 5)),
-            "Product Name": "helios1_40sec_mag_plasma",
-            "get_data": get_helios1_data,
+            "Product Name": "40sec_mag_plasma",
+            "get_data": functools.partial(get_helios1_data, product="40sec_mag_plasma"),
+            "Bin Size [sec]": 40,
         },
         "Helios 2": {
             "ID": "Helios 2",
             "Time Range": (dt.datetime(1976, 1, 16), dt.datetime(1980, 3, 9)),
-            "Product Name": "helios2_40sec_mag_plasma",
-            "get_data": get_helios2_data,
+            "Product Name": "40sec_mag_plasma",
+            "get_data": functools.partial(get_helios2_data, product="40sec_mag_plasma"),
+            "Bin Size [sec]": 40,
         },
     }
 

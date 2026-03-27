@@ -22,7 +22,11 @@ tf.random.set_seed(SEED)
 
 # Make Data object
 mag: MAGData = MAGData(
-    get_solar_orbiter_data(TimeRange("2021-01-01", "2021-01-02")),
+    get_solar_orbiter_data(
+        TimeRange("2021-01-01", "2021-01-02"),
+        product="mag-rtn-normal-1-minute",
+        quality_limit=2,
+    ),
     metadata={"Spacecraft": "Solar Orbiter"},
 )
 

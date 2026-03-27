@@ -60,22 +60,28 @@ def add_magnitude(
     return new_data
 
 
-def get_helios1_data(time_range: TimeRange, instrument: str = "MAG") -> pl.DataFrame:
-    return get_helios_data(time_range, spacecraft=1, instrument=instrument)
+def get_helios1_data(
+    time_range: TimeRange, product: str = "40sec_mag_plasma"
+) -> pl.DataFrame:
+    return get_helios_data(time_range, spacecraft=1, product=product)
 
 
-def get_helios2_data(time_range: TimeRange, instrument: str = "MAG") -> pl.DataFrame:
-    return get_helios_data(time_range, spacecraft=2, instrument=instrument)
+def get_helios2_data(
+    time_range: TimeRange, product: str = "40sec_mag_plasma"
+) -> pl.DataFrame:
+    return get_helios_data(time_range, spacecraft=2, product=product)
 
 
-def get_helios_data(time_range: TimeRange, spacecraft: int, instrument: str = "MAG"):
+def get_helios_data(
+    time_range: TimeRange, spacecraft: int, product: str = "40sec_mag_plasma"
+):
 
     assert time_range.start is not None
     assert time_range.end is not None
 
-    match instrument:
+    match product:
 
-        case "MAG":
+        case "40sec_mag_plasma":
 
             if spacecraft == 1:
                 dataset = a.cdaweb.Dataset.helios1_40sec_mag_plasma  # type: ignore[attr-defined]
@@ -135,7 +141,7 @@ def get_helios_data(time_range: TimeRange, spacecraft: int, instrument: str = "M
             return data
 
         case _:
-            raise ValueError(f"Instrument '{instrument}' not yet implemented.")
+            raise ValueError(f"Product '{product}' not yet implemented.")
 
 
 def remove_helios_nans(data: pl.DataFrame) -> pl.DataFrame:
@@ -147,15 +153,15 @@ def remove_helios_nans(data: pl.DataFrame) -> pl.DataFrame:
 
 
 def get_solar_orbiter_data(
-    time_range: TimeRange, instrument: str = "MAG", quality_limit: int = 2
+    time_range: TimeRange, product: str, quality_limit: int
 ) -> pl.DataFrame:
 
     assert time_range.start is not None
     assert time_range.end is not None
 
-    match instrument:
+    match product:
 
-        case "MAG":
+        case "mag-rtn-normal-1-minute":
             result = Fido.search(
                 a.Time(time_range.start.to_string(), time_range.end.to_string()),
                 a.soar.Product("mag-rtn-normal-1-minute"),  # type: ignore[attr-defined]
@@ -213,17 +219,17 @@ def get_solar_orbiter_data(
             return data
 
         case _:
-            raise ValueError(f"Instrument '{instrument}' not yet implemented.")
+            raise ValueError(f"Product '{product}' not yet implemented.")
 
 
-def get_parker_data(time_range: TimeRange, instrument: str = "MAG") -> pl.DataFrame:
+def get_parker_data(time_range: TimeRange, product: str) -> pl.DataFrame:
 
     assert time_range.start is not None
     assert time_range.end is not None
 
-    match instrument:
+    match product:
 
-        case "MAG":
+        case "psp_fld_l2_quality_flags":
             result = Fido.search(
                 a.Time(time_range.start.to_string(), time_range.end.to_string()),
                 a.cdaweb.Dataset.psp_fld_l2_mag_rtn_1min,  # type: ignore[attr-defined]
@@ -303,14 +309,14 @@ def get_parker_data(time_range: TimeRange, instrument: str = "MAG") -> pl.DataFr
             return data
 
         case _:
-            raise ValueError(f"Instrument '{instrument}' not yet implemented.")
+            raise ValueError(f"Product '{product}' not yet implemented.")
 
 
-def get_messenger_data(time_range: TimeRange, instrument: str = "MAG") -> pl.DataFrame:
+def get_messenger_data(time_range: TimeRange, product: str) -> pl.DataFrame:
     assert time_range.start is not None
     assert time_range.end is not None
 
-    match instrument:
+    match product:
 
         case "MAG":
             client = ClientMESSENGER()
@@ -368,7 +374,7 @@ def get_messenger_data(time_range: TimeRange, instrument: str = "MAG") -> pl.Dat
             return pl.concat(dataframes)
 
         case _:
-            raise ValueError(f"Instrument '{instrument}' not yet implemented.")
+            raise ValueError(f"Product '{product}' not yet implemented.")
 
 
 def get_bepicolombo_data(time_range: TimeRange, instrument: str = "MPO-MAG"):
