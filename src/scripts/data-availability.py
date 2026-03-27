@@ -12,7 +12,6 @@ from typing import Any, Dict, List
 
 import astropy.units as u
 import matplotlib.pyplot as plt
-import matplotlib.transforms
 import numpy as np
 import polars as pl
 import spiceypy as spice
@@ -26,8 +25,11 @@ from sunpy.time import TimeRange
 from mvswim.data import get_helios_data, get_parker_data, get_solar_orbiter_data
 
 # Define the critera with which we look within
-HELIOCENTRIC_DISTANCE_BOUNDS = (0.3, 0.5)  # au
-LATITUDE_BOUND = 5  # deg
+HELIOCENTRIC_DISTANCE_BOUNDS = (
+    0.3075,
+    0.4667,
+)  # au (Mercury's perihelion and aphelion)
+LATITUDE_BOUND = 3.38  # deg (Mercury's inclination to the Sun's equator)
 TRAJECTORY_RESOLUTION = dt.timedelta(days=1)
 
 DATA_DIRECTORY = Path(__file__).parent.parent.parent / "data/"
@@ -81,14 +83,14 @@ def main():
         "Parker Solar Probe": {
             "ID": "Parker Solar Probe",
             "Time Range": (dt.datetime(2018, 8, 13), dt.datetime(2025, 11, 1)),
-            "Product Name": "mag-rtn-normal-1-minute",
+            "Product Name": "psp-fld-l2-mag-rtn-1min",
             "get_data": get_parker_data,
             "Bin Size [sec]": 60,
         },
         "Solar Orbiter": {
             "ID": "Solar Orbiter",
             "Time Range": (dt.datetime(2020, 2, 11), dt.datetime(2026, 1, 1)),
-            "Product Name": "psp-fld-l2-mag-rtn-1min",
+            "Product Name": "mag-rtn-normal-1-minute",
             "get_data": get_solar_orbiter_data,
             "Bin Size [sec]": 60,
         },
@@ -170,8 +172,6 @@ def main():
                     np.abs(pl.col("Latitude [deg]")) <= LATITUDE_BOUND
                 )
 
-                print(positions_table)
-
                 # Next we download data for the times where we have positions
                 # First lets find all the jumps in time greater than the time resolution
                 positions_table = positions_table.with_columns(
@@ -201,7 +201,6 @@ def main():
                         continue
 
                     # Get data for each interval
-                    print(interval)
                     data_segments.append(info["get_data"](interval))
 
                 info["Data Segments"] = data_segments
@@ -224,9 +223,14 @@ def main():
     axes: List[Axes] = axes_grid.flatten()
 
     fig.suptitle(
-        r"$0.3 \,\rm{AU} \leq R_H \leq 0.5 \,\rm{AU}$"
+        f"${HELIOCENTRIC_DISTANCE_BOUNDS[0]}"
+        + r"\,\rm{AU} \leq R_H \leq"
+        + f"{HELIOCENTRIC_DISTANCE_BOUNDS[1]}"
+        + r" \,\rm{AU}$"
         + "\n"
-        + r"$|\rm{Lat.}| \leq 5 ^\circ $"
+        + r"$|\rm{Lat.}| \leq"
+        + f" {LATITUDE_BOUND}"
+        + r"^\circ $"
     )
 
     # First make plots of data availability in time
