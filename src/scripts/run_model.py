@@ -96,7 +96,8 @@ def main():
     metrics.write_csv(state["Log Directory"] / "performance-metrics.csv")
 
     # Cleanup
-    pynvml.nvmlShutdown()
+    if state["GPU"] is True:
+        pynvml.nvmlShutdown()
 
 
 def apply_model(data_chunk: pl.DataFrame, state: Dict[str, Any]) -> Dict[str, Any]:
