@@ -1,7 +1,0 @@
-seed = 1785
-
-[data]
-spacecraft = ["Solar Orbiter"]
-
-[model]
-inducing_points = 10
