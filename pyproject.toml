@@ -25,9 +25,6 @@ dependencies = [
     "tf-keras>=2.21.0",
 ]
 
-[tool.uv.sources]
-hermpy = { git = "https://github.com/daraghhollman/hermpy-1.0.0.git" }
-
 [build-system]
 requires = ["setuptools"]
 
