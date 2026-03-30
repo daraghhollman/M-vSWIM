@@ -31,7 +31,7 @@ HELIOCENTRIC_DISTANCE_BOUNDS = (
     0.4667,
 )  # au (Mercury's perihelion and aphelion)
 LATITUDE_BOUND = 3.38  # deg (Mercury's inclination to the Sun's equator)
-TRAJECTORY_RESOLUTION = dt.timedelta(days=1)
+TRAJECTORY_RESOLUTION = dt.timedelta(hours=1)
 
 DATA_DIRECTORY = Path(__file__).parent.parent.parent / "data/"
 FIGURE_DIRECTORY = Path(__file__).parent.parent.parent / "figures/"
