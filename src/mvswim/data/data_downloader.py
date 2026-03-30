@@ -157,9 +157,9 @@ def get_helios_data(
             # far below this, so there is no scientific concern.
             data = data.with_columns(
                 pl.col("UTC"),
-                pl.col("Br [nT]").cast(pl.Float32),
-                pl.col("Bt [nT]").cast(pl.Float32),
-                pl.col("Bn [nT]").cast(pl.Float32),
+                pl.col("Br [nT]"),
+                pl.col("Bt [nT]"),
+                pl.col("Bn [nT]"),
             )
 
             # Filter data to time_range
@@ -422,9 +422,9 @@ def get_messenger_data(
                 # far below this, so there is no scientific concern.
                 file_data = file_data.with_columns(
                     pl.col("UTC"),
-                    pl.col("Br [nT]").cast(pl.Float32),
-                    pl.col("Bt [nT]").cast(pl.Float32),
-                    pl.col("Bn [nT]").cast(pl.Float32),
+                    pl.col("Br [nT]"),
+                    pl.col("Bt [nT]"),
+                    pl.col("Bn [nT]"),
                 )
 
                 dataframes.append(file_data)

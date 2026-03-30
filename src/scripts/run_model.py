@@ -33,6 +33,7 @@ from sunpy.time import TimeRange
 
 from mvswim.data import get_helios_data, get_parker_data, get_solar_orbiter_data
 from mvswim.modelling import SolarWindModel
+from mvswim.modelling.gap_generator import GapGenerator
 from mvswim.scalling import TimeScaler
 
 LOG_DIR = Path(__file__).parent.parent.parent / "logs"
@@ -72,7 +73,7 @@ def main():
     for i, (chunk, label) in enumerate(zip(data_chunks, chunk_labels)):
 
         log(f"Applying model to chunk: {i+1}/{len(data_chunks)}", state)
-        chunk_metrics = apply_model(chunk, state)
+        chunk_metrics = apply_model("|B| [nT]", chunk, state)
         chunk_metrics.update({"Spacecraft": label})
 
         # Flatten our nested metrics
@@ -100,25 +101,35 @@ def main():
         pynvml.nvmlShutdown()
 
 
-def apply_model(data_chunk: pl.DataFrame, state: Dict[str, Any]) -> Dict[str, Any]:
+def apply_model(
+    y_variable: str, data_chunk: pl.DataFrame, state: Dict[str, Any]
+) -> Dict[str, Any]:
 
-    # For now we will start with just using |B|.
-    X: NDArray = data_chunk["UTC"].to_numpy().reshape(-1, 1)
-    Y: NDArray = data_chunk["|B| [nT]"].to_numpy().reshape(-1, 1).astype("float64")
-
-    # Remove any nans
-    valid_mask = ~np.isnan(Y).squeeze()
-    X = X[valid_mask]
-    Y = Y[valid_mask]
-
-    time_scaler = TimeScaler(X)
+    # Standardise input type
+    data_chunk = data_chunk.cast({y_variable: pl.Float64})
 
     # First we need to create our artificial gaps
-    gap_generator = state["Config"]["Model"]["Gap Generator"]
+    gap_generator: GapGenerator = state["Config"]["Model"]["Gap Generator"]
 
-    training_x, training_y, testing_x, testing_y = gap_generator.create_gaps(X, Y)
+    training_df, testing_df = gap_generator.train_test_split(data_chunk)
 
-    # Then we're gonna apply the model, quantify performance, and produce a figure.
+    # Drop nans -> These should only be cropping up if they are present in the
+    # dataset itself, not as a function of operations we do.
+    training_df = training_df.drop_nans()
+    testing_df = testing_df.drop_nans()
+
+    training_x: NDArray = training_df["UTC"].to_numpy().reshape(-1, 1)
+    training_y: NDArray = training_df[y_variable].to_numpy().reshape(-1, 1)
+
+    testing_x: NDArray = testing_df["UTC"].to_numpy().reshape(-1, 1)
+    testing_y: NDArray = testing_df[y_variable].to_numpy().reshape(-1, 1)
+
+    # We need to scale our time coordinate to help with numerical stabiliity.
+    # We create a TimeScaler object which fits to the training data.
+    # SolarWindModel uses this object to scale the data.
+    time_scaler = TimeScaler(training_x)
+
+    # Build the model
     model = SolarWindModel.build(
         input=training_x,
         output=training_y,
@@ -128,8 +139,13 @@ def apply_model(data_chunk: pl.DataFrame, state: Dict[str, Any]) -> Dict[str, An
         seed=state["Config"]["Seed"],
     )
 
+    # Fit the model to the training data
     model.train_model(log_gpu=state["GPU"])
+
+    # Quantify performance
     performance_metrics = model.test_performance(testing_x, testing_y)
+
+    # Create a quicklook figure
     model.quicklook(testing_data=(testing_x, testing_y))
 
     return performance_metrics

@@ -14,6 +14,11 @@ CONFIG = {
     },
     "Model": {
         "Inducing Points": 10,
-        "Gap Generator": GapGenerator.from_normal_distributions(2 * 60, 30, 4 * 60, 30),
+        "Gap Generator": GapGenerator.from_gaussian(
+            gap_size_mean=60,  # minutes
+            gap_size_std=10,
+            gap_interval_mean=60,
+            gap_interval_std=10,
+        ),
     },
 }
