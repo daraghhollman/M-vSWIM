@@ -71,22 +71,41 @@ def add_magnitude(
 
 
 def get_helios1_data(
-    time_range: TimeRange, product: str = "40sec_mag_plasma"
+    time_range: TimeRange,
+    product: str = "40sec_mag_plasma",
+    downsample_data: bool = False,
+    downsample_frequency: str = "1h",
 ) -> pl.DataFrame:
-    return get_helios_data(time_range, spacecraft=1, product=product)
+    return get_helios_data(
+        time_range,
+        spacecraft=1,
+        product=product,
+        downsample_data=downsample_data,
+        downsample_frequency=downsample_frequency,
+    )
 
 
 def get_helios2_data(
-    time_range: TimeRange, product: str = "40sec_mag_plasma"
+    time_range: TimeRange,
+    product: str = "40sec_mag_plasma",
+    downsample_data: bool = False,
+    downsample_frequency: str = "1h",
 ) -> pl.DataFrame:
-    return get_helios_data(time_range, spacecraft=2, product=product)
+    return get_helios_data(
+        time_range,
+        spacecraft=2,
+        product=product,
+        downsample_data=downsample_data,
+        downsample_frequency=downsample_frequency,
+    )
 
 
 def get_helios_data(
     time_range: TimeRange,
     spacecraft: int,
     product: str = "40sec_mag_plasma",
-    frequency: str = "1h",
+    downsample_data: bool = False,
+    downsample_frequency: str = "1h",
 ):
 
     assert time_range.start is not None
@@ -152,7 +171,8 @@ def get_helios_data(
             data = add_magnitude(data)
 
             # Downsample
-            data = downsample(data, frequency=frequency)
+            if downsample_data:
+                data = downsample(data, frequency=downsample_frequency)
 
             return data
 
@@ -172,7 +192,8 @@ def get_solar_orbiter_data(
     time_range: TimeRange,
     product: str,
     quality_limit: int,
-    frequency: str = "1h",
+    downsample_data: bool = False,
+    downsample_frequency: str = "1h",
 ) -> pl.DataFrame:
 
     assert time_range.start is not None
@@ -236,7 +257,8 @@ def get_solar_orbiter_data(
                 )
 
             # Downsample
-            data = downsample(data, frequency=frequency)
+            if downsample_data:
+                data = downsample(data, frequency=downsample_frequency)
 
             return data
 
@@ -245,7 +267,10 @@ def get_solar_orbiter_data(
 
 
 def get_parker_data(
-    time_range: TimeRange, product: str, frequency: str = "1h"
+    time_range: TimeRange,
+    product: str,
+    downsample_data: bool = False,
+    downsample_frequency: str = "1h",
 ) -> pl.DataFrame:
 
     assert time_range.start is not None
@@ -331,7 +356,8 @@ def get_parker_data(
                 )
 
             # Downsample
-            data = downsample(data, frequency=frequency)
+            if downsample_data:
+                data = downsample(data, frequency=downsample_frequency)
 
             return data
 
@@ -340,7 +366,10 @@ def get_parker_data(
 
 
 def get_messenger_data(
-    time_range: TimeRange, product: str, frequency: str = "1h"
+    time_range: TimeRange,
+    product: str,
+    downsample_data: bool = False,
+    downsample_frequency: str = "1h",
 ) -> pl.DataFrame:
     assert time_range.start is not None
     assert time_range.end is not None
@@ -400,7 +429,12 @@ def get_messenger_data(
 
                 dataframes.append(file_data)
 
-            return downsample(pl.concat(dataframes), frequency=frequency)
+            data = pl.concat(dataframes)
+
+            if downsample_data:
+                data = downsample(data, frequency=downsample_frequency)
+
+            return data
 
         case _:
             raise ValueError(f"Product '{product}' not yet implemented.")
