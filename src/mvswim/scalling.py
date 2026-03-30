@@ -1,3 +1,4 @@
+from gpflow.kernels import Kernel
 from numpy.typing import NDArray
 from sklearn.preprocessing import MinMaxScaler
 
@@ -6,8 +7,9 @@ class TimeScaler:
 
     def __init__(self, fit_data: NDArray) -> None:
 
-        self._fit_data = fit_data
-        self._scaler = self.init_transform()
+        self._fit_data: NDArray = fit_data
+        self._scaler: MinMaxScaler = self.init_transform()
+        self._data_range: float = self._scaler.data_range_[0]
 
     def init_transform(self) -> MinMaxScaler:
         scaler = MinMaxScaler()
@@ -31,12 +33,64 @@ class TimeScaler:
 
         return self._scaler.inverse_transform(data).astype("datetime64[ns]")
 
-    def scale_duration(self, duration_seconds: float) -> float:
+    def scale_duration(self, duration: float) -> float:
         """
-        Converts a physical duration (in seconds) into the scaled [0, 1] time
-        units used by the model. Durations scale by the data range only —
-        no offset is applied, unlike point values.
+        Converts a physical duration (in units of data cadence) into the scaled
+        [0, 1] time units used by the model. Durations scale by the data range
+        only — no offset is applied, unlike point values.
         """
-        data_range_ns = float(self._scaler.data_range_[0])
-        duration_ns = duration_seconds * 1e9
-        return duration_ns / data_range_ns
+        return duration / self._data_range
+
+
+class KernelScaler:
+    """
+    Rescales kernel lengthscales from physical durations (seconds) into the
+    [0, 1] space defined by a fitted TimeScaler.
+
+    Using this class means that Kernels can be defined in physically meaningful
+    units.
+
+    Parameters
+    ----------
+    time_scaler : TimeScaler
+        A TimeScaler instance that has already been fitted to the training data.
+
+    Example
+    -------
+    scaler = TimeScaler(X_train)
+    kernel_scaler = KernelScaler(scaler)
+
+    k = gpflow.kernels.SquaredExponential(lengthscales=30 * 86400)  # 30 days in seconds
+    kernel_scaler.scale(k)
+    """
+
+    def __init__(self, time_scaler: "TimeScaler") -> None:
+        self._time_scaler = time_scaler
+
+    def scale(self, kernel: Kernel) -> Kernel:
+        """
+        Rescale all lengthscales (and periods) in the kernel tree in-place.
+        Returns the kernel for convenient chaining.
+        """
+        self._scale_recursive(kernel)
+        return kernel
+
+    def _scale_recursive(self, kernel: Kernel) -> None:
+        """Walk composite kernels (Sum, Product) recursively."""
+        if hasattr(kernel, "kernels"):
+            for child in kernel.kernels:
+                self._scale_recursive(child)
+            return
+
+        # Scale any lengthscales
+        if hasattr(kernel, "lengthscales"):
+            self._rescale_param(kernel, "lengthscales")
+
+        # Scale any periods
+        if hasattr(kernel, "period"):
+            self._rescale_param(kernel, "period")
+
+    def _rescale_param(self, kernel: Kernel, param: str) -> None:
+        raw_seconds = getattr(kernel, param).numpy()
+        scaled = self._time_scaler.scale_duration(float(raw_seconds))
+        getattr(kernel, param).assign(scaled)

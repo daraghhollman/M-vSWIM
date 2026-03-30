@@ -74,6 +74,11 @@ def main():
 
         log(f"Applying model to chunk: {i+1}/{len(data_chunks)}", state)
         chunk_metrics = apply_model("|B| [nT]", chunk, state)
+
+        if chunk_metrics is None:
+            # Application failed to this data chunk
+            continue
+
         chunk_metrics.update({"Spacecraft": label})
 
         # Flatten our nested metrics
@@ -103,7 +108,7 @@ def main():
 
 def apply_model(
     y_variable: str, data_chunk: pl.DataFrame, state: Dict[str, Any]
-) -> Dict[str, Any]:
+) -> Dict[str, Any] | None:
 
     # Standardise input type
     data_chunk = data_chunk.cast({y_variable: pl.Float64})
@@ -111,7 +116,13 @@ def apply_model(
     # First we need to create our artificial gaps
     gap_generator: GapGenerator = state["Config"]["Model"]["Gap Generator"]
 
-    training_df, testing_df = gap_generator.train_test_split(data_chunk)
+    # Sometimes we will get no data from these, we need to except those cases
+    # and continue.
+    try:
+        training_df, testing_df = gap_generator.train_test_split(data_chunk)
+
+    except ValueError:
+        return None
 
     # Drop nans -> These should only be cropping up if they are present in the
     # dataset itself, not as a function of operations we do.
@@ -134,6 +145,7 @@ def apply_model(
         input=training_x,
         output=training_y,
         time_scaler=time_scaler,
+        kernel=state["Config"]["Model"]["Kernel"],
         n_inducing_points=state["Config"]["Model"]["Inducing Points"],
         log_directory=state["Log Directory"],
         seed=state["Config"]["Seed"],

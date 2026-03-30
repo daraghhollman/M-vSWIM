@@ -1,6 +1,15 @@
 import datetime as dt
 
+from gpflow import Parameter
+from gpflow.kernels import Periodic, RationalQuadratic, SquaredExponential
+
 from mvswim.modelling import GapGenerator
+
+kernel = RationalQuadratic() + Periodic(
+    base_kernel=SquaredExponential(),
+    # Period in data cadence units
+    period=Parameter(27 * 24),
+)
 
 CONFIG = {
     "Seed": 1785,
@@ -20,5 +29,6 @@ CONFIG = {
             gap_interval_mean=60,
             gap_interval_std=10,
         ),
+        "Kernel": kernel,
     },
 }

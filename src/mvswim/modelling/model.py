@@ -15,13 +15,7 @@ import pynvml
 import tensorflow as tf
 import tensorflow.summary
 from gpflow import Parameter
-from gpflow.kernels import (
-    Kernel,
-    Linear,
-    Periodic,
-    RationalQuadratic,
-    SquaredExponential,
-)
+from gpflow.kernels import Kernel
 from gpflow.models import SGPR
 from gpflow.monitor import (
     ModelToTensorBoard,
@@ -30,7 +24,6 @@ from gpflow.monitor import (
     ScalarToTensorBoard,
 )
 from gpflow.optimizers import Scipy
-from gpflow.utilities import deepcopy
 from keras.optimizers import Optimizer
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
@@ -39,8 +32,7 @@ from sklearn.cluster import MiniBatchKMeans
 from sklearn.metrics import mean_absolute_error, r2_score, root_mean_squared_error
 from tensorflow import Tensor
 
-from mvswim.constants import CARRINGTON_ROTATION
-from mvswim.scalling import TimeScaler
+from mvswim.scalling import KernelScaler, TimeScaler
 
 __all__ = [
     "SolarWindModel",
@@ -65,6 +57,7 @@ class SolarWindModel:
         input: NDArray[np.datetime64],
         output: NDArray[Any],
         time_scaler: TimeScaler,
+        kernel: Kernel,
         n_inducing_points: int,
         seed: int,
         log_directory: Path,
@@ -83,8 +76,6 @@ class SolarWindModel:
         X = time_scaler.time_to_numeric(input)
         Y = output
 
-        kernel = _build_kernel(time_scaler)
-
         # Use K-Means Clustering to determine good inducing points
         kmeans = MiniBatchKMeans(
             n_clusters=n_inducing_points, random_state=seed, n_init="auto"
@@ -92,7 +83,10 @@ class SolarWindModel:
         kmeans.fit(X)
         inducing_points = kmeans.cluster_centers_
 
-        gpmodel = SGPR((X, Y), kernel=kernel, inducing_variable=inducing_points)
+        kernel_scaler = KernelScaler(time_scaler)
+        scaled_kernel = kernel_scaler.scale(kernel)
+
+        gpmodel = SGPR((X, Y), kernel=scaled_kernel, inducing_variable=inducing_points)
 
         opt = Scipy()
 
@@ -114,14 +108,6 @@ class SolarWindModel:
         # Log the statement to a file
         with open(self.log_directory / "log", "a") as f:
             f.write(dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S  ") + s + "\n")
-
-    def visualise_kernel(self) -> None:
-        # Visualise kernel
-        fig = _plot_kernel(self.kernel)
-
-        os.makedirs(self.log_directory / "figures")
-
-        fig.savefig(self.log_directory / f"figures/kernel.pdf")
 
     def train_model(self, log_gpu: bool = False) -> None:
         """
@@ -204,6 +190,11 @@ class SolarWindModel:
     def test_performance(
         self, testing_x: NDArray, testing_y: NDArray
     ) -> Dict[str, Dict[str, NDArray]]:
+
+        # Check if input contains nan
+        if np.isnan(testing_y).any():
+            print(testing_y)
+            print(len(np.isnan(testing_y)))
 
         self.log(f"TESTING")
         # We need to scale our inputs
@@ -384,38 +375,6 @@ def plot_from_training_data(data_path: Path) -> Tuple[Figure, Axes]:
     ax.legend()
 
     return fig, ax
-
-
-def _build_kernel(time_scaler: TimeScaler) -> Kernel:
-    """
-    Constructs the solar wind kernel with physically-meaningful initial
-    parameter values expressed in scaled time units.
-    """
-
-    # We want something to capture the short scale variation, and something to
-    # capture the large scale.
-    short_scale_variation = RationalQuadratic(lengthscales=0.1)
-    long_scale_variation = RationalQuadratic(lengthscales=1)
-
-    trend = Linear()
-
-    # We expect a periodic component with period roughly equal to the time it
-    # takes for the same part of the sun to be subsolar to Mercury again - note
-    # that this is slightly longer than a solar rotation.
-
-    # Scale the physical period into [0,1] time units
-    scaled_period = time_scaler.scale_duration(CARRINGTON_ROTATION.to(u.second).value)
-
-    periodic_component = Periodic(
-        base_kernel=SquaredExponential(),
-        period=Parameter(scaled_period, trainable=False),
-    )
-
-    composite_kernel = (
-        trend + short_scale_variation + long_scale_variation + periodic_component
-    )
-
-    return composite_kernel
 
 
 def _interpolate_continuous_chunks(
