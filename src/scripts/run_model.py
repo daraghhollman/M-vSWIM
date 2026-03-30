@@ -245,44 +245,43 @@ def fetch_data(state: Dict[str, Any]) -> Tuple[List[pl.DataFrame], List[str]]:
         "Parker Solar Probe": {
             "ID": "Parker Solar Probe",
             "Time Range": (dt.datetime(2018, 8, 13), dt.datetime(2025, 11, 1)),
-            "Product Name": "psp-fld-l2-mag-rtn-1min",
             "get_data": functools.partial(
                 get_parker_data, product="psp-fld-l2-mag-rtn-1min"
             ),
-            "Bin Size [sec]": 60,
         },
         "Solar Orbiter": {
             "ID": "Solar Orbiter",
             "Time Range": (dt.datetime(2020, 2, 11), dt.datetime(2026, 1, 1)),
-            "Product Name": "mag-rtn-normal-1-minute",
             "get_data": functools.partial(
                 get_solar_orbiter_data,
                 product="mag-rtn-normal-1-minute",
                 quality_limit=2,
             ),
-            "Bin Size [sec]": 60,
         },
         "Helios 1": {
             "ID": "Helios 1",
             "Time Range": (dt.datetime(1974, 12, 11), dt.datetime(1985, 9, 5)),
             "Product Name": "40sec_mag_plasma",
             "get_data": functools.partial(get_helios1_data, product="40sec_mag_plasma"),
-            "Bin Size [sec]": 40,
         },
         "Helios 2": {
             "ID": "Helios 2",
             "Time Range": (dt.datetime(1976, 1, 16), dt.datetime(1980, 3, 9)),
-            "Product Name": "40sec_mag_plasma",
             "get_data": functools.partial(get_helios2_data, product="40sec_mag_plasma"),
-            "Bin Size [sec]": 40,
         },
     }
 
-    TRAJECTORY_RESOLUTION = dt.timedelta(hours=1)
-    HELIOCENTRIC_DISTANCE_BOUNDS = (0.3, 0.5)  # au
+    filter_trajectory_resolution = state["Config"]["Data"]["Filter"][
+        "Filter Resolution"
+    ]
+    heliocentric_distance_bounds = state["Config"]["Data"]["Filter"][
+        "Heliocentric Distance [AU]"
+    ]
+    latitude_limit = state["Config"]["Data"]["Filter"]["Latitude [deg]"]
 
     # Loop through each spacecraft listed in the config file
-    log(f"Filter parameters: {HELIOCENTRIC_DISTANCE_BOUNDS} au", state)
+    log(f"Filter parameters: {heliocentric_distance_bounds} au", state)
+    log(f"Filter parameters: {latitude_limit} deg", state)
     log("Fetching filtered spacecraft data for:", state)
     data_chunks: List[pl.DataFrame] = []
     data_labels: List[str] = []
@@ -293,11 +292,11 @@ def fetch_data(state: Dict[str, Any]) -> Tuple[List[pl.DataFrame], List[str]]:
         with spice_client.KernelPool():
             info = spacecraft_info[id]
             times = [
-                info["Time Range"][0] + i * TRAJECTORY_RESOLUTION
+                info["Time Range"][0] + i * filter_trajectory_resolution
                 for i in range(
                     int(
                         (info["Time Range"][1] - info["Time Range"][0])
-                        / TRAJECTORY_RESOLUTION
+                        / filter_trajectory_resolution
                     )
                 )
             ]
@@ -326,8 +325,8 @@ def fetch_data(state: Dict[str, Any]) -> Tuple[List[pl.DataFrame], List[str]]:
 
             # Filter only to times within AU bounds
             positions_table = positions_table.filter(
-                (pl.col("Radius [au]") >= HELIOCENTRIC_DISTANCE_BOUNDS[0])
-                & (pl.col("Radius [au]") <= HELIOCENTRIC_DISTANCE_BOUNDS[1])
+                (pl.col("Radius [au]") >= heliocentric_distance_bounds[0])
+                & (pl.col("Radius [au]") <= heliocentric_distance_bounds[1])
             )
 
             # Next we download data for the times where we have positions
@@ -337,7 +336,7 @@ def fetch_data(state: Dict[str, Any]) -> Tuple[List[pl.DataFrame], List[str]]:
             )
 
             jump_indices = np.where(
-                positions_table["Time Step"] > TRAJECTORY_RESOLUTION
+                positions_table["Time Step"] > filter_trajectory_resolution
             )[0]
 
             start_indices = np.concatenate(([0], jump_indices)).tolist()
