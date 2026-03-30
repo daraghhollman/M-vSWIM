@@ -24,27 +24,37 @@ __all__ = [
 ]
 
 
-def main():
-    # A quick example of how to use each of the below functions to access data.
-    data = get_solar_orbiter_data(TimeRange("2021-01-01 00:00", "2021-01-02 00:00"))
+def downsample(
+    df: pl.DataFrame, frequency: str, time_column: str = "UTC"
+) -> pl.DataFrame:
+    """
 
-    print(data)
+    Downsamples a polars dataframe with time column 'UTC' to an input
+    frequency.
 
-    data = get_parker_data(TimeRange("2021-01-01 00:00", "2021-01-02 00:00"))
+    Parameters
+    ----------
+    df: pl.DataFrame
+        The polars dataframe to perform the operation on.
 
-    print(data)
+    frequency: str
+        Accepted arguments are created with the following string language:
+            1m (1 minute)
+            1h (1 hour)
+            1d (1 calendar day)
 
-    data = get_messenger_data(TimeRange("2012-01-01 00:00", "2012-01-02 00:00"))
+    time_column: str, {UTC}
+        Which column in df corresponds to the time.
+    """
 
-    print(data)
+    non_time_columns = [col for col in df.columns if col != time_column]
 
-    data = get_helios1_data(TimeRange("1981-01-01 00:00", "1981-01-02 00:00"))
+    # In polars, downsampling is a special case of the group-by operation
+    df = df.group_by_dynamic(time_column, every=frequency).agg(
+        [pl.col(col).mean() for col in non_time_columns]
+    )
 
-    print(data)
-
-    data = get_helios2_data(TimeRange("1979-01-01 00:00", "1979-01-02 00:00"))
-
-    print(data)
+    return df
 
 
 def add_magnitude(
@@ -73,7 +83,10 @@ def get_helios2_data(
 
 
 def get_helios_data(
-    time_range: TimeRange, spacecraft: int, product: str = "40sec_mag_plasma"
+    time_range: TimeRange,
+    spacecraft: int,
+    product: str = "40sec_mag_plasma",
+    frequency: str = "1h",
 ):
 
     assert time_range.start is not None
@@ -138,6 +151,9 @@ def get_helios_data(
 
             data = add_magnitude(data)
 
+            # Downsample
+            data = downsample(data, frequency=frequency)
+
             return data
 
         case _:
@@ -153,7 +169,10 @@ def remove_helios_nans(data: pl.DataFrame) -> pl.DataFrame:
 
 
 def get_solar_orbiter_data(
-    time_range: TimeRange, product: str, quality_limit: int
+    time_range: TimeRange,
+    product: str,
+    quality_limit: int,
+    frequency: str = "1h",
 ) -> pl.DataFrame:
 
     assert time_range.start is not None
@@ -216,20 +235,25 @@ def get_solar_orbiter_data(
                     f"Removed {length_before - length_after} timesteps with poor quality data."
                 )
 
+            # Downsample
+            data = downsample(data, frequency=frequency)
+
             return data
 
         case _:
             raise ValueError(f"Product '{product}' not yet implemented.")
 
 
-def get_parker_data(time_range: TimeRange, product: str) -> pl.DataFrame:
+def get_parker_data(
+    time_range: TimeRange, product: str, frequency: str = "1h"
+) -> pl.DataFrame:
 
     assert time_range.start is not None
     assert time_range.end is not None
 
-    match product:
+    match product.lower():
 
-        case "psp_fld_l2_quality_flags":
+        case "psp-fld-l2-mag-rtn-1min":
             result = Fido.search(
                 a.Time(time_range.start.to_string(), time_range.end.to_string()),
                 a.cdaweb.Dataset.psp_fld_l2_mag_rtn_1min,  # type: ignore[attr-defined]
@@ -306,13 +330,18 @@ def get_parker_data(time_range: TimeRange, product: str) -> pl.DataFrame:
                     f"Removed {length_before - length_after} timesteps with poor quality data."
                 )
 
+            # Downsample
+            data = downsample(data, frequency=frequency)
+
             return data
 
         case _:
             raise ValueError(f"Product '{product}' not yet implemented.")
 
 
-def get_messenger_data(time_range: TimeRange, product: str) -> pl.DataFrame:
+def get_messenger_data(
+    time_range: TimeRange, product: str, frequency: str = "1h"
+) -> pl.DataFrame:
     assert time_range.start is not None
     assert time_range.end is not None
 
@@ -371,7 +400,7 @@ def get_messenger_data(time_range: TimeRange, product: str) -> pl.DataFrame:
 
                 dataframes.append(file_data)
 
-            return pl.concat(dataframes)
+            return downsample(pl.concat(dataframes), frequency=frequency)
 
         case _:
             raise ValueError(f"Product '{product}' not yet implemented.")
@@ -379,7 +408,3 @@ def get_messenger_data(time_range: TimeRange, product: str) -> pl.DataFrame:
 
 def get_bepicolombo_data(time_range: TimeRange, instrument: str = "MPO-MAG"):
     pass
-
-
-if __name__ == "__main__":
-    main()
