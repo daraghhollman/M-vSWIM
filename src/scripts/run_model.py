@@ -140,13 +140,17 @@ def apply_model(
     # SolarWindModel uses this object to scale the data.
     time_scaler = TimeScaler(training_x)
 
+    n_inducing_points = int(
+        len(training_df) * state["Config"]["Model"]["Inducing Point Fraction"]
+    )
+
     # Build the model
     model = SolarWindModel.build(
         input=training_x,
         output=training_y,
         time_scaler=time_scaler,
         kernel=state["Config"]["Model"]["Kernel"],
-        n_inducing_points=state["Config"]["Model"]["Inducing Points"],
+        n_inducing_points=n_inducing_points,
         log_directory=state["Log Directory"],
         seed=state["Config"]["Seed"],
     )

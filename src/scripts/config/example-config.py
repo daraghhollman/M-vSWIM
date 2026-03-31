@@ -22,7 +22,7 @@ CONFIG = {
         },
     },
     "Model": {
-        "Inducing Points": 10,
+        "Inducing Point Fraction": 0.01,  # Fraction of data to fit to (0-1)
         "Gap Generator": GapGenerator.from_gaussian(
             gap_size_mean=60,  # minutes
             gap_size_std=10,
