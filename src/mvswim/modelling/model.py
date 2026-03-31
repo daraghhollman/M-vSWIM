@@ -203,6 +203,14 @@ class SolarWindModel:
         # Get model predictions for this time range
         y_mean, _ = self.model.predict_y(testing_x)
 
+        # If the model couldn't fit the predict function will produce nan
+        # values. Usually this means not enough inducing points were used.
+        # In these cases, we return nan for the metrics and continue.
+        return_nans: bool = False
+        if np.isnan(y_mean).any():
+            self.log("Model failed to predict, returning nans.")
+            return_nans = True
+
         # Get linear interpolation for this time range
         linear_y = _interpolate_continuous_chunks(testing_x, testing_y)
 
@@ -220,6 +228,12 @@ class SolarWindModel:
         label: str
         function: Callable
         for label, function in zip(metric_labels, metric_functions):
+
+            if return_nans:
+                model_metrics.update({label: np.nan})
+                linear_metrics.update({label: np.nan})
+
+                continue
 
             # Each of these are in the form: y_true, y_pred
             metric = function(testing_y, y_mean)
