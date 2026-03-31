@@ -17,7 +17,7 @@ import os
 import shutil
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Literal, Tuple
 
 import astropy.units as u
 import numpy as np
@@ -64,7 +64,13 @@ def main():
         return
 
     # First fetch the required data
-    data_chunks, chunk_labels = fetch_data(state)
+    data_chunks, chunk_labels = fetch_data(
+        state,
+        downsample_pars={
+            "downsample_data": state["Config"]["Data"]["Downsample"]["Enabled"],
+            "downsample_frequency": state["Config"]["Data"]["Downsample"]["Frequency"],
+        },
+    )
 
     # Apply model to each chunk
     metrics: None | pl.DataFrame = None
@@ -229,7 +235,12 @@ def parse_config(state: Dict[str, Any]) -> Dict[str, Any] | None:
     return state["Config"]
 
 
-def fetch_data(state: Dict[str, Any]) -> Tuple[List[pl.DataFrame], List[str]]:
+def fetch_data(
+    state: Dict[str, Any],
+    downsample_pars: Dict[
+        Literal["downsample_data", "downsample_frequency"], bool | str
+    ],
+) -> Tuple[List[pl.DataFrame], List[str]]:
 
     log("Setting up spice client", state)
     spice_client = ClientSPICE()
@@ -278,7 +289,7 @@ def fetch_data(state: Dict[str, Any]) -> Tuple[List[pl.DataFrame], List[str]]:
             "ID": "Parker Solar Probe",
             "Time Range": (dt.datetime(2018, 8, 13), dt.datetime(2025, 11, 1)),
             "get_data": functools.partial(
-                get_parker_data, product="psp-fld-l2-mag-rtn-1min"
+                get_parker_data, product="psp-fld-l2-mag-rtn-1min", **downsample_pars
             ),
         },
         "Solar Orbiter": {
@@ -288,18 +299,23 @@ def fetch_data(state: Dict[str, Any]) -> Tuple[List[pl.DataFrame], List[str]]:
                 get_solar_orbiter_data,
                 product="mag-rtn-normal-1-minute",
                 quality_limit=2,
+                **downsample_pars,
             ),
         },
         "Helios 1": {
             "ID": "Helios 1",
             "Time Range": (dt.datetime(1974, 12, 11), dt.datetime(1985, 9, 5)),
             "Product Name": "40sec_mag_plasma",
-            "get_data": functools.partial(get_helios1_data, product="40sec_mag_plasma"),
+            "get_data": functools.partial(
+                get_helios1_data, product="40sec_mag_plasma", **downsample_pars
+            ),
         },
         "Helios 2": {
             "ID": "Helios 2",
             "Time Range": (dt.datetime(1976, 1, 16), dt.datetime(1980, 3, 9)),
-            "get_data": functools.partial(get_helios2_data, product="40sec_mag_plasma"),
+            "get_data": functools.partial(
+                get_helios2_data, product="40sec_mag_plasma", **downsample_pars
+            ),
         },
     }
 

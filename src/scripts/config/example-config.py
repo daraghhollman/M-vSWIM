@@ -20,6 +20,10 @@ CONFIG = {
             "Heliocentric Distance [AU]": (0.3075, 0.4667),
             "Latitude [deg]": 3.38,
         },
+        "Downsample": {
+            "Enabled": True,
+            "Frequency": "1h",
+        },
     },
     "Model": {
         "Inducing Point Fraction": 0.01,  # Fraction of data to fit to (0-1)
