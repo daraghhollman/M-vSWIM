@@ -74,6 +74,8 @@ def main():
     )
 
     # Apply model to each chunk
+    training_loop_start = dt.datetime.now()
+
     metrics: None | pl.DataFrame = None
     chunk: pl.DataFrame
     label: str
@@ -111,6 +113,21 @@ def main():
     # Cleanup
     if state["GPU"] is True:
         pynvml.nvmlShutdown()
+
+    training_loop_end = dt.datetime.now()
+
+    metrics = metrics.drop_nans()
+
+    log(f"Total run time: {training_loop_end - training_loop_start}", state)
+    log("Average Performance:", state)
+    log(
+        f"Model Correlation: {metrics['Model R Squared'].mean()} +/- {metrics['Model R Squared'].std()}",
+        state,
+    )
+    log(
+        f"LI Correlation: {metrics['Linear Interpolation R Squared'].mean()} +/- {metrics['Linear Interpolation R Squared'].std()}",
+        state,
+    )
 
 
 def apply_model(
