@@ -2,6 +2,8 @@ from gpflow.kernels import Kernel
 from numpy.typing import NDArray
 from sklearn.preprocessing import MinMaxScaler
 
+_NS_PER_SECOND = 1_000_000_000  # np.datetime64 with [ns] resolution uses nanoseconds
+
 
 class TimeScaler:
 
@@ -33,13 +35,14 @@ class TimeScaler:
 
         return self._scaler.inverse_transform(data).astype("datetime64[ns]")
 
-    def scale_duration(self, duration: float) -> float:
+    def scale_duration(self, duration_seconds: float) -> float:
         """
         Converts a physical duration (in units of data cadence) into the scaled
         [0, 1] time units used by the model. Durations scale by the data range
         only — no offset is applied, unlike point values.
         """
-        return duration / self._data_range
+        duration_ns = duration_seconds * _NS_PER_SECOND
+        return duration_ns / self._data_range
 
 
 class KernelScaler:

@@ -16,6 +16,7 @@ import importlib.util
 import os
 import shutil
 import sys
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Tuple
 
@@ -128,6 +129,7 @@ def apply_model(
         training_df, testing_df = gap_generator.train_test_split(data_chunk)
 
     except ValueError:
+        log("Skipping application, cannot split into training and testing sets", state)
         return None
 
     # Drop nans -> These should only be cropping up if they are present in the
@@ -155,7 +157,7 @@ def apply_model(
         input=training_x,
         output=training_y,
         time_scaler=time_scaler,
-        kernel=state["Config"]["Model"]["Kernel"],
+        kernel=deepcopy(state["Config"]["Model"]["Kernel"]),
         n_inducing_points=n_inducing_points,
         log_directory=state["Log Directory"],
         seed=state["Config"]["Seed"],
