@@ -168,6 +168,10 @@ def apply_model(
     n_inducing_points = int(
         len(training_df) * state["Config"]["Model"]["Inducing Point Fraction"]
     )
+    log(
+        f"Using {n_inducing_points} inducing points ({state["Config"]["Model"]["Inducing Point Fraction"]})",
+        state,
+    )
 
     # Build the model
     model = SolarWindModel.build(
