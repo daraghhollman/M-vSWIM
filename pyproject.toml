@@ -10,6 +10,7 @@ dependencies = [
     "check-shapes>=1.1.1",
     "gpflow>=2.5.2",
     "hermpy>=0.1.0",
+    "ipykernel>=7.2.0",
     "numpy>=2.2.6",
     "nvidia-ml-py>=13.595.45",
     "polars>=1.38.1",
