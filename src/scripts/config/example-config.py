@@ -17,7 +17,7 @@ CONFIG = {
         "Filter": {
             "Filter Resolution": dt.timedelta(hours=1),
             "Heliocentric Distance [AU]": (0.3075, 0.4667),
-            "Latitude [deg]": 3.38,
+            "Latitude [deg]": 3.38,  # maxiumum +/-
         },
         "Downsample": {
             # GPR models scale dramatically with the amount of data used. We
