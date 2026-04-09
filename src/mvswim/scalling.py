@@ -1,8 +1,7 @@
+import numpy as np
 from gpflow.kernels import Kernel
 from numpy.typing import NDArray
 from sklearn.preprocessing import MinMaxScaler
-
-_NS_PER_SECOND = 1_000_000_000  # np.datetime64 with [ns] resolution uses nanoseconds
 
 
 class TimeScaler:
@@ -35,20 +34,11 @@ class TimeScaler:
 
         return self._scaler.inverse_transform(data).astype("datetime64[ns]")
 
-    def scale_duration(self, duration_seconds: float) -> float:
-        """
-        Converts a physical duration (in units of data cadence) into the scaled
-        [0, 1] time units used by the model. Durations scale by the data range
-        only — no offset is applied, unlike point values.
-        """
-        duration_ns = duration_seconds * _NS_PER_SECOND
-        return duration_ns / self._data_range
-
 
 class KernelScaler:
     """
-    Rescales kernel lengthscales from physical durations (seconds) into the
-    [0, 1] space defined by a fitted TimeScaler.
+    Rescales kernel lengthscales from physical durations into the [0, 1] space
+    defined by a fitted TimeScaler.
 
     Using this class means that Kernels can be defined in physically meaningful
     units.
@@ -67,7 +57,7 @@ class KernelScaler:
     kernel_scaler.scale(k)
     """
 
-    def __init__(self, time_scaler: "TimeScaler") -> None:
+    def __init__(self, time_scaler: TimeScaler) -> None:
         self._time_scaler = time_scaler
 
     def scale(self, kernel: Kernel) -> Kernel:
@@ -94,6 +84,11 @@ class KernelScaler:
             self._rescale_param(kernel, "period")
 
     def _rescale_param(self, kernel: Kernel, param: str) -> None:
-        raw_seconds = getattr(kernel, param).numpy()
-        scaled = self._time_scaler.scale_duration(float(raw_seconds))
+
+        value_seconds = getattr(kernel, param).numpy()
+
+        value_ns = value_seconds * 1e9
+
+        scaled = value_ns / self._time_scaler._data_range
+
         getattr(kernel, param).assign(scaled)

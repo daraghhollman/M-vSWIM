@@ -7,7 +7,7 @@ from mvswim.modelling import GapGenerator
 
 kernel = RationalQuadratic() + Periodic(
     base_kernel=SquaredExponential(),
-    period=Parameter(27 * 24 * 3600),  # Seconds
+    period=Parameter(27 * 24 * 3600, trainable=False),  # Seconds
 )
 
 CONFIG = {
