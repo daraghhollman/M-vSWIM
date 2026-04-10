@@ -14,38 +14,38 @@ These spacecraft offer a relatively long-term and continuous measurement of the 
 
 ## Fit the model to data
 <details>
-    <summary>Using <a href='https://github.com/astral-sh/uv'>uv</a></summary>
+<summary>Using <a href='https://github.com/astral-sh/uv'>uv</a></summary>
 
-    ```shell
-    # uv run python src/scripts/run_model.py <config>
+```shell
+# uv run python src/scripts/run_model.py <config>
 
-    e.g.
-    uv run python src/scripts/run_model.py src/scripts/config/example-config.py
-    ```
+e.g.
+uv run python src/scripts/run_model.py src/scripts/config/example-config.py
+```
 </details>
 <details>
-    <summary>Using <a href='https://github.com/casey/just'>just</a></summary>
+<summary>Using <a href='https://github.com/casey/just'>just</a></summary>
 
-    Requires <a href='https://github.com/astral-sh/uv'>uv</a>
+Requires <a href='https://github.com/astral-sh/uv'>uv</a>
 
-    ```shell
-    # just train <config>
+```shell
+# just train <config>
 
-    e.g.
-    just run src/scripts/config/example-config.py
-    ```
+e.g.
+just run src/scripts/config/example-config.py
+```
 </details>
 <details>
-    <summary>Manual environment</a></summary>
+<summary>Manual environment</a></summary>
 
-    NOT RECOMMENDED FOR REPRODUCIBILITY
+NOT RECOMMENDED FOR REPRODUCIBILITY
 
-    If you would rather, you may manually create an Python environment (i.e. via venv, pyenv, cond, or similar). See [pyproject.toml](./pyproject.toml) for dependancy details.
+If you would rather, you may manually create an Python environment (i.e. via venv, pyenv, cond, or similar). See [pyproject.toml](./pyproject.toml) for dependancy details.
 
-    ```shell
-    # uv run python src/scripts/run_model.py <config>
+```shell
+# uv run python src/scripts/run_model.py <config>
 
-    e.g.
-    uv run python src/scripts/run_model.py src/scripts/config/example-config.py
-    ```
+e.g.
+uv run python src/scripts/run_model.py src/scripts/config/example-config.py
+```
 </details>
