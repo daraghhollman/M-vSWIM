@@ -5,10 +5,7 @@ from gpflow.kernels import Periodic, RationalQuadratic, SquaredExponential
 
 from mvswim.modelling import GapGenerator
 
-kernel = RationalQuadratic() + Periodic(
-    base_kernel=SquaredExponential(),
-    period=Parameter(27 * 24 * 3600, trainable=False),  # Seconds
-)
+kernel = RationalQuadratic(lengthscales=Parameter(3600))
 
 CONFIG = {
     "Seed": 1785,
@@ -24,11 +21,14 @@ CONFIG = {
             # downsample from our minute resolution data to achieve better
             # performance.
             "Enabled": True,
-            "Frequency": "30m",
+            "Frequency": "10m",
         },
     },
     "Model": {
-        "Inducing Point Fraction": 0.05,  # Fraction of data to fit to (0-1)
+        "Sparse": {
+            "Enabled": False,
+            "Inducing Point Fraction": 0.05,  # Fraction of data to fit to (0-1)
+        },
         "Gap Generator": GapGenerator.from_gaussian(
             gap_size_mean=4 * 60,  # minutes
             gap_size_std=60,

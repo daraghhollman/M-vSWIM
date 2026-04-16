@@ -165,13 +165,20 @@ def apply_model(
     # SolarWindModel uses this object to scale the data.
     time_scaler = TimeScaler(training_x)
 
-    n_inducing_points = int(
-        len(training_df) * state["Config"]["Model"]["Inducing Point Fraction"]
-    )
-    log(
-        f"Using {n_inducing_points} inducing points ({state["Config"]["Model"]["Inducing Point Fraction"]})",
-        state,
-    )
+    # Flag for using SGPR over GPR
+    sparse: bool = state["Config"]["Model"]["Sparse"]["Enabled"]
+
+    if sparse:
+        n_inducing_points = int(
+            len(training_df)
+            * state["Config"]["Model"]["Sparse"]["Inducing Point Fraction"]
+        )
+        log(
+            f"Using {n_inducing_points} inducing points ({state["Config"]["Model"]["Sparse"]["Inducing Point Fraction"]})",
+            state,
+        )
+    else:
+        n_inducing_points = 0  # As we don't need it
 
     # Build the model
     model = SolarWindModel.build(
@@ -179,6 +186,7 @@ def apply_model(
         output=training_y,
         time_scaler=time_scaler,
         kernel=deepcopy(state["Config"]["Model"]["Kernel"]),
+        sparse=sparse,
         n_inducing_points=n_inducing_points,
         log_directory=state["Log Directory"],
         seed=state["Config"]["Seed"],

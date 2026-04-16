@@ -16,7 +16,7 @@ import tensorflow as tf
 import tensorflow.summary
 from gpflow import Parameter
 from gpflow.kernels import Kernel
-from gpflow.models import SGPR
+from gpflow.models import GPR, SGPR
 from gpflow.monitor import (
     ModelToTensorBoard,
     Monitor,
@@ -58,6 +58,7 @@ class SolarWindModel:
         output: NDArray[Any],
         time_scaler: TimeScaler,
         kernel: Kernel,
+        sparse: bool,
         n_inducing_points: int,
         seed: int,
         log_directory: Path,
@@ -77,16 +78,31 @@ class SolarWindModel:
         Y = output
 
         # Use K-Means Clustering to determine good inducing points
-        kmeans = MiniBatchKMeans(
-            n_clusters=n_inducing_points, random_state=seed, n_init="auto"
-        )
-        kmeans.fit(X)
-        inducing_points = kmeans.cluster_centers_
+        if sparse:
+            kmeans = MiniBatchKMeans(
+                n_clusters=n_inducing_points, random_state=seed, n_init="auto"
+            )
+            kmeans.fit(X)
+            inducing_points = kmeans.cluster_centers_
+        else:
+            inducing_points = 0
 
         kernel_scaler = KernelScaler(time_scaler)
         scaled_kernel = kernel_scaler.scale(kernel)
 
-        gpmodel = SGPR((X, Y), kernel=scaled_kernel, inducing_variable=inducing_points)
+        if sparse:
+            gpmodel = SGPR(
+                (X, Y),
+                kernel=scaled_kernel,
+                inducing_variable=inducing_points,
+                mean_function=gpflow.mean_functions.Constant(np.mean(output)),
+            )
+        else:
+            gpmodel = GPR(
+                (X, Y),
+                kernel=scaled_kernel,
+                mean_function=gpflow.mean_functions.Constant(np.mean(output)),
+            )
 
         opt = Scipy()
 
@@ -256,7 +272,7 @@ class SolarWindModel:
         gpflow.utilities.print_summary(self.model)
 
     def quicklook(self, testing_data: None | Tuple[NDArray, ...] = None) -> None:
-        x_range = np.linspace(0, 1, 1000)[:, None]
+        x_range = np.linspace(0, 1, 10000)[:, None]
 
         y_mean, y_var = self.model.predict_y(x_range)
 
