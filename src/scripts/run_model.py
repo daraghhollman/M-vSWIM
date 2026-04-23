@@ -408,6 +408,11 @@ def fetch_data(
                 & (pl.col("Radius [au]") <= heliocentric_distance_bounds[1])
             )
 
+            # Filter by latitude
+            positions_table = positions_table.filter(
+                pl.col("Latitude [deg]").abs() <= latitude_limit
+            )
+
             # Next we download data for the times where we have positions
             # First lets find all the jumps in time greater than the time resolution
             positions_table = positions_table.with_columns(
