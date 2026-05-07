@@ -870,7 +870,7 @@ wheels = [
 
 [[package]]
 name = "hermpy"
-version = "0.1.6"
+version = "0.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bs4" },
@@ -886,9 +886,9 @@ dependencies = [
     { name = "xarray" },
     { name = "zeep" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/42/35/9667ea3b50d2ba3d1838f0342137cc1355b616bc0edbcab5d33e7d2f18c2/hermpy-0.1.6.tar.gz", hash = "sha256:075aad4c2abc765bfc6ef2be83eae42486075bc7c88f84925b8f23616a20ab7d", size = 36116, upload-time = "2026-03-26T17:26:09.046Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a0/69/4aadf2f580c9a307c397a8c31a584cca19641c30666e325e44a895dceb47/hermpy-0.2.1.tar.gz", hash = "sha256:b2bfcda6f6ded8692bd2b5009d1b650495c4f85e5485a3117059876471fa9ce9", size = 36081, upload-time = "2026-05-05T08:39:12.699Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/58/9d/aa5659143d239dd378155bc35f9301bceb73a0b13650aba1da931637df6d/hermpy-0.1.6-py3-none-any.whl", hash = "sha256:0dac1b37edb714f7ceeff27cabab97ed28e0c21d3b5022325b841a214dc55774", size = 29433, upload-time = "2026-03-26T17:26:09.919Z" },
+    { url = "https://files.pythonhosted.org/packages/81/b3/50eb2bc15956e2394059c8f7c382b82cbe25debf2ffe16a130557e1b39c9/hermpy-0.2.1-py3-none-any.whl", hash = "sha256:f1e282bfcf966a8f08e8056e4df3f54d82ed383225d88f94b8d22c875f96e8c9", size = 29397, upload-time = "2026-05-05T08:39:13.61Z" },
 ]
 
 [[package]]
@@ -1418,7 +1418,7 @@ requires-dist = [
     { name = "cdflib", specifier = ">=1.3.8" },
     { name = "check-shapes", specifier = ">=1.1.1" },
     { name = "gpflow", specifier = ">=2.5.2" },
-    { name = "hermpy", specifier = ">=0.1.0" },
+    { name = "hermpy", specifier = ">=0.2.1" },
     { name = "ipykernel", specifier = ">=7.2.0" },
     { name = "numpy", specifier = ">=2.2.6" },
     { name = "nvidia-ml-py", specifier = ">=13.595.45" },
@@ -1678,7 +1678,11 @@ source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "nvidia-cuda-nvrtc-cu12" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/04/1b/54f7595727516ba21b59dd8607ade5e6dda973462264be9af74b5ee0dee3/nvidia_cublas_cu12-12.9.2.10.tar.gz", hash = "sha256:7caf6512c921f956e5e609378e8332be502d7e5108deaade5c7ecf6b8042e842", size = 15431, upload-time = "2026-03-24T04:05:24.555Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f7/a2/c96163a0fff1839c0c9548bbdeae7b853b867009e33b9b9264adc238b1cf/nvidia_cublas_cu12-12.9.2.10-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:5572131a59c3eebeeb1c4c8144f772d49372c20124916e072a0e3fc30df421d5", size = 575012079, upload-time = "2026-04-08T18:51:47.303Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/c0/0a517bfe63ccd3b92eb254d264e28fca3c7cab75d07daea315250fb1bf73/nvidia_cublas_cu12-12.9.2.10-py3-none-manylinux_2_27_x86_64.whl", hash = "sha256:e4f53a8ca8c5d6e8c492d0d0a3d565ecb59a751b19cfdaa4f6da0ab2104c1702", size = 581240110, upload-time = "2026-04-08T18:52:31.532Z" },
+    { url = "https://files.pythonhosted.org/packages/20/e2/fc9a0e985249d873150276d5afb02e39a66817fedbf1a385724393e505ed/nvidia_cublas_cu12-12.9.2.10-py3-none-win_amd64.whl", hash = "sha256:623f43027d40d44ceadf0043f002bd25cf353e8f13ce90b9a87057019f560661", size = 553162896, upload-time = "2026-04-08T18:53:10.035Z" },
+]
 
 [[package]]
 name = "nvidia-cuda-cupti-cu12"
