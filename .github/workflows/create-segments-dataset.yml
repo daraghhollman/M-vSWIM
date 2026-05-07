@@ -1,9 +1,6 @@
 name: Create datasets
 
-on:
-  push:
-    branches: [main]
-
+on: workflow_dispatch
 
 jobs:
   run:
