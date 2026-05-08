@@ -164,7 +164,7 @@ def main() -> None:
 
     segment: DataSegment
     for i, segment in enumerate(data_segments[:]):  # iterate over a copy to allow safe removal
-        print(f"Processing segment {i+1}/{len(data_segments)}")
+        print(f"Processing segment {i+1}/{len(data_segments[:])}")
 
         # Load the data, pull out some features
         segment.data = segment.spacecraft.data_loader(segment.time_range)
