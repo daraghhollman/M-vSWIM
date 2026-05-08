@@ -21,6 +21,7 @@ from typing import Any, Callable, Dict, List, Tuple, cast
 import astropy.units as u
 import numpy as np
 import polars as pl
+import pycatch22
 import spiceypy as spice
 from astropy.coordinates import SkyCoord
 from astropy.time import Time
@@ -31,7 +32,7 @@ from sunpy.coordinates import frames
 from sunpy.time import TimeRange
 from tqdm import tqdm
 
-from mvswim.data import get_parker_data, get_solar_orbiter_data
+from mvswim.data import get_helios_data, get_parker_data, get_solar_orbiter_data
 
 SAVE_PATH: Path = Path(__file__).parent.parent.parent / "data/data-segments.json"
 
@@ -71,6 +72,20 @@ def main() -> None:
             mission_time_range=TimeRange("2018-08-13", "2025-11-01"),
             data_loader=partial(get_parker_data, product="psp-fld-l2-mag-rtn-1min"),
         ),
+        Spacecraft(
+            name="Helios 1",
+            mission_time_range=TimeRange("1974-12-11", "1985-09-05"),
+            data_loader=partial(
+                get_helios_data, spacecraft=1, product="40sec_mag_plasma"
+            ),
+        ),
+        Spacecraft(
+            name="Helios 2",
+            mission_time_range=TimeRange("1976-01-16", "1980-03-09"),
+            data_loader=partial(
+                get_helios_data, spacecraft=2, product="40sec_mag_plasma"
+            ),
+        ),
     ]
 
     with spice_client.KernelPool():
@@ -99,9 +114,13 @@ def main() -> None:
                 (pl.col("UTC") - pl.col("UTC").shift(1)).alias("Time Step")
             )
 
+            # Timestamps from spice may not be exactly the FILTER RESOLUTION
+            # apart. We need to add a small tolerance.
+            expected_step = dt.timedelta(hours=FILTER_RESOLUTION.to(u.hour).value)
+            tolerance = dt.timedelta(minutes=1)
+
             jump_indices = np.where(
-                positions_table["Time Step"]
-                > dt.timedelta(hours=FILTER_RESOLUTION.to(u.hour).value)
+                positions_table["Time Step"] > expected_step + tolerance
             )[0]
 
             start_indices = np.concatenate(([0], jump_indices)).tolist()
@@ -124,31 +143,13 @@ def main() -> None:
                         "Mean Distance [au]": cast(
                             float, segment_slice["Distance [au]"].mean()
                         ),
-                        "Min Distance [au]": cast(
-                            float, segment_slice["Distance [au]"].min()
-                        ),
-                        "Max Distance [au]": cast(
-                            float, segment_slice["Distance [au]"].max()
-                        ),
                         # Longitude [deg]
                         "Mean Longitude [deg]": cast(
                             float, segment_slice["Longitude [deg]"].mean()
                         ),
-                        "Min Longitude [deg]": cast(
-                            float, segment_slice["Longitude [deg]"].min()
-                        ),
-                        "Max Longitude [deg]": cast(
-                            float, segment_slice["Longitude [deg]"].max()
-                        ),
                         # Latitude [deg]
                         "Mean Latitude [deg]": cast(
                             float, segment_slice["Latitude [deg]"].mean()
-                        ),
-                        "Min Latitude [deg]": cast(
-                            float, segment_slice["Latitude [deg]"].min()
-                        ),
-                        "Max Latitude [deg]": cast(
-                            float, segment_slice["Latitude [deg]"].max()
                         ),
                     },
                 )
@@ -162,9 +163,43 @@ def main() -> None:
     print("Fetching data")
 
     segment: DataSegment
-    for segment in data_segments:
+    for i, segment in enumerate(data_segments[:]):  # iterate over a copy to allow safe removal
+        print(f"Processing segment {i+1}/{len(data_segments)}")
+
         # Load the data, pull out some features
         segment.data = segment.spacecraft.data_loader(segment.time_range)
+
+        # We need to catch if there is no data for this time
+        if len(segment.data) == 0:
+            data_segments.remove(segment)
+            continue
+
+        for component in ["|B|", "Br", "Bt", "Bn"]:
+
+            segment.features[component] = {}
+
+            metrics: Dict[str, Callable[[List[float]], float]] = {
+                "Mean": np.mean,
+                "Median": np.median,
+                "Standard Deviation": np.std,
+            }
+
+            for metric_label, metric_function in metrics.items():
+                segment.features[component].update(
+                    {
+                        f"{metric_label}": metric_function(
+                            segment.data[component + " [nT]"].drop_nans().to_list()
+                        )
+                    }
+                )
+
+            # Use pycatch22 to determine some metrics
+            catch22_features = pycatch22.catch22_all(
+                segment.data[component + " [nT]"].drop_nans().to_list()
+            )
+            segment.features[component].update(
+                dict(zip(catch22_features["names"], catch22_features["values"]))
+            )
 
     rows: List[Dict[str, Any]] = []
     for segment in tqdm(data_segments, desc="Creating dataset"):
@@ -202,7 +237,7 @@ class DataSegment:
     spacecraft: Spacecraft
     start_time: dt.datetime
     end_time: dt.datetime
-    features: Dict[str, float]
+    features: Dict[str, Any]
     data: None | pl.DataFrame = None
     positions: None | pl.DataFrame = None
 
@@ -272,8 +307,7 @@ SPICE_KERNELS: Dict[str, Dict[str, Any]] = {
         "DIRECTORY": "generic_kernels/pck/",
         "PATTERNS": ["pck00011.tpc"],
     },
-    # Solar Orbiter
-    "Solar Orbiter Positions": {
+    "Solar Orbiter": {
         "BASE": "http://spiftp.esac.esa.int/data/SPICE/SOLAR-ORBITER/",
         "DIRECTORY": "kernels/spk/",
         "PATTERNS": [
@@ -281,11 +315,18 @@ SPICE_KERNELS: Dict[str, Dict[str, Any]] = {
             "solo_ANC_soc-orbit_20200210-20301118_L000_V0_00001_V01.bsp",
         ],
     },
-    # Parker Solar Probe
-    "PSP": {
+    "Parker Solar Probe": {
         "BASE": "https://spdf.gsfc.nasa.gov/pub/data/psp/",
         "DIRECTORY": "ephemeris/spice/ephemerides/",
         "PATTERNS": ["spp_nom_20180812_20300101_v043_PostV7.bsp"],
+    },
+    "Helios 1/2": {
+        "BASE": "https://naif.jpl.nasa.gov/pub/naif/HELIOS/",
+        "DIRECTORY": "kernels/spk/",
+        "PATTERNS": [
+            "???????_???????_?????_?????.bsp",
+            "????????_???????_?????_?????.bsp",
+        ],
     },
 }
 

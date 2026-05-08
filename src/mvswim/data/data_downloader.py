@@ -185,7 +185,7 @@ def remove_helios_nans(data: pl.DataFrame) -> pl.DataFrame:
     # There are extreme negative values in this dataset which I believe to be
     # in place of missing data. These are all negative, and ~ 1e31 in
     # magnitude.
-    return data.remove(pl.col("Br [nT]") < -1e30)
+    return data.filter(~(pl.col("Br [nT]") < -1e30))
 
 
 def get_solar_orbiter_data(

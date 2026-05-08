@@ -1401,6 +1401,7 @@ dependencies = [
     { name = "nvidia-ml-py" },
     { name = "polars" },
     { name = "psutil" },
+    { name = "pycatch22" },
     { name = "scikit-learn" },
     { name = "scipy" },
     { name = "setuptools" },
@@ -1424,6 +1425,7 @@ requires-dist = [
     { name = "nvidia-ml-py", specifier = ">=13.595.45" },
     { name = "polars", specifier = ">=1.38.1" },
     { name = "psutil", specifier = ">=7.2.2" },
+    { name = "pycatch22", specifier = ">=0.4.5" },
     { name = "scikit-learn", specifier = ">=1.7.2" },
     { name = "scipy", specifier = ">=1.15.3" },
     { name = "setuptools", specifier = "<82" },
@@ -2259,6 +2261,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/cd/05/0a34433a064256a57
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8e/37/efad0257dc6e593a18957422533ff0f87ede7c9c6ea010a2177d738fb82f/pure_eval-0.2.3-py3-none-any.whl", hash = "sha256:1db8e35b67b3d218d818ae653e27f06c3aa420901fa7b081ca98cbedc874e0d0", size = 11842, upload-time = "2024-07-21T12:58:20.04Z" },
 ]
+
+[[package]]
+name = "pycatch22"
+version = "0.4.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/84/9c/452f83ae4d0e1f0fc36317b6b15c7a07214a1cc7205e19b35d77253c6cad/pycatch22-0.4.5.tar.gz", hash = "sha256:7ec844c659f22bedc66847ac866ef2bd86ffbbd4d8114b5e97f699f20a6f9f81", size = 50311, upload-time = "2024-05-14T05:02:37.228Z" }
 
 [[package]]
 name = "pycparser"
