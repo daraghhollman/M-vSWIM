@@ -23,7 +23,7 @@ import numpy as np
 import polars as pl
 import pycatch22
 import spiceypy as spice
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import CartesianDifferential, SkyCoord
 from astropy.time import Time
 from astropy.wcs.utils import CartesianRepresentation
 from hermpy.net import ClientSPICE
@@ -163,7 +163,9 @@ def main() -> None:
     print("Fetching data")
 
     segment: DataSegment
-    for i, segment in enumerate(data_segments[:]):  # iterate over a copy to allow safe removal
+    for i, segment in enumerate(
+        data_segments[:]
+    ):  # iterate over a copy to allow safe removal
         print(f"Processing segment {i+1}/{len(data_segments[:])}")
 
         # Load the data, pull out some features
@@ -271,13 +273,16 @@ def get_positions(spacecraft: Spacecraft) -> pl.DataFrame:
     ]
 
     ets = spice.datetime2et(times)
-    positions: NDArray = spice.spkpos(s.name, ets, "J2000", "NONE", "SUN")[0]
+    states: NDArray = np.asarray(spice.spkezr(s.name, ets, "J2000", "NONE", "SUN")[0])
 
-    # SPICE gives results in units of km
-    positions *= u.km
+    # SPICE gives results in units of km and km/s
+    positions = states[:, :3] * u.km
+    velocities = states[:, 3:] * (u.km / u.s)
 
     skycoords = SkyCoord(
-        CartesianRepresentation(positions.T),
+        CartesianRepresentation(
+            positions.T, differentials=CartesianDifferential(velocities.T)
+        ),
         obstime=times,
         frame="icrs",
     ).transform_to(frames.HeliographicStonyhurst)
@@ -286,12 +291,19 @@ def get_positions(spacecraft: Spacecraft) -> pl.DataFrame:
     assert isinstance(skycoords.lon, u.Quantity)
     assert isinstance(skycoords.lat, u.Quantity)
 
+    radial_velocity = skycoords.d_radius
+    tangential_velocity = (skycoords.d_lon * skycoords.radius).to(
+        u.km / u.s, equivalencies=u.dimensionless_angles()
+    )
+
     return pl.DataFrame(
         {
             "UTC": times,
             "Distance [au]": skycoords.radius.to(u.au),
             "Longitude [deg]": skycoords.lon.to(u.deg),
             "Latitude [deg]": skycoords.lat.to(u.deg),
+            "Radial Velocity [km/s]": radial_velocity,
+            "Tangential Velocity [km/s]": tangential_velocity,
         }
     )
 
